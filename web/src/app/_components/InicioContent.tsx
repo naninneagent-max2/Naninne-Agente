@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import * as React from "react";
@@ -16,13 +15,13 @@ import {
   Lightbulb,
   Rocket,
   FileSearch,
-  BookOpen,
   Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/store/auth";
+import { useAgents } from "@/lib/store/agents";
 import { LoginForm } from "./LoginForm";
 
 type Project = {
@@ -59,22 +58,33 @@ export function InicioContent() {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [input, setInput] = React.useState("");
-  const [chatLoading, setChatLoading] = React.useState(false);
   const [chatError, setChatError] = React.useState<string | null>(null);
-  const [stats, setStats] = React.useState({ library: 0, memories: 0, sessions: 1 });
+  const [stats, setStats] = React.useState({ library: 0, memories: 0, documents: 0, sessions: 1 });
   const [extractingMemories, setExtractingMemories] = React.useState(false);
   const [memoryToast, setMemoryToast] = React.useState<string | null>(null);
+
+  // Agent store
+  const resetAgents = useAgents((s) => s.reset);
+  const updateStep = useAgents((s) => s.updateStep);
+  const setActive = useAgents((s) => s.setActive);
+  const setFullText = useAgents((s) => s.setFullText);
+  const setSources = useAgents((s) => s.setSources);
+  const setTokens = useAgents((s) => s.setTokens);
+  const setDocumentId = useAgents((s) => s.setDocumentId);
+  const chatLoading = useAgents((s) => s.isActive);
 
   const reloadStats = React.useCallback(() => {
     if (!user) return;
     Promise.all([
       fetch("/api/library", { cache: "no-store" }).then((r) => r.json()).catch(() => ({ items: [] })),
       fetch("/api/memories", { cache: "no-store" }).then((r) => r.json()).catch(() => ({ memories: [] })),
-    ]).then(([lib, mem]) => {
+      fetch("/api/documents", { cache: "no-store" }).then((r) => r.json()).catch(() => ({ documents: [] })),
+    ]).then(([lib, mem, doc]) => {
       setStats((s) => ({
         ...s,
         library: lib.items?.length ?? 0,
         memories: mem.memories?.length ?? 0,
+        documents: doc.documents?.length ?? 0,
       }));
     });
   }, [user]);
@@ -99,7 +109,10 @@ export function InicioContent() {
     const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: "user", content: text };
     setMessages((m) => [...m, userMsg]);
     if (!textOverride) setInput("");
-    setChatLoading(true);
+
+    // Reset agent state
+    resetAgents();
+    setFullText("");
 
     const assistantId = `a-${Date.now()}`;
     setMessages((m) => [...m, { id: assistantId, role: "assistant", content: "", streaming: true }]);
@@ -111,32 +124,68 @@ export function InicioContent() {
         body: JSON.stringify({ messages: [...messages, userMsg] }),
       });
 
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         const txt = await res.text();
         throw new Error(txt || `HTTP ${res.status}`);
       }
 
-      const reader = res.body?.getReader();
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = "";
       let accumulated = "";
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          accumulated += decoder.decode(value, { stream: true });
-          setMessages((m) =>
-            m.map((msg) =>
-              msg.id === assistantId ? { ...msg, content: accumulated, streaming: true } : msg
-            )
-          );
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE events
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const json = line.slice(6).trim();
+          if (!json) continue;
+          try {
+            const event = JSON.parse(json);
+            if (event.type === "init") {
+              // Already initialized in reset()
+            } else if (event.type === "agent_start") {
+              // step will be updated via step event
+            } else if (event.type === "agent_done") {
+              // already updated
+            } else if (event.type === "step") {
+              updateStep(event.stepId, event.state, event.detail);
+            } else if (event.type === "text") {
+              accumulated += event.content;
+              setMessages((m) =>
+                m.map((msg) =>
+                  msg.id === assistantId ? { ...msg, content: accumulated, streaming: true } : msg
+                )
+              );
+            } else if (event.type === "error") {
+              throw new Error(event.message);
+            } else if (event.type === "done") {
+              setSources(event.sources ?? []);
+              setTokens(event.tokens_in ?? 0, event.tokens_out ?? 0, event.cost_usd ?? 0);
+              setDocumentId(event.document_id);
+            }
+          } catch (parseErr) {
+            // Ignore parse errors for partial lines
+            if (!(parseErr instanceof SyntaxError)) {
+              throw parseErr;
+            }
+          }
         }
       }
 
       setMessages((m) =>
         m.map((msg) => (msg.id === assistantId ? { ...msg, streaming: false } : msg))
       );
-      setStats((s) => ({ ...s, sessions: s.sessions + 1 }));
+      setActive(false);
+      setStats((s) => ({ ...s, sessions: s.sessions + 1, documents: s.documents + 1 }));
+      reloadStats();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Erro de rede";
       setChatError(errorMsg);
@@ -145,8 +194,7 @@ export function InicioContent() {
           msg.id === assistantId ? { ...msg, content: `Erro: ${errorMsg}`, streaming: false } : msg
         )
       );
-    } finally {
-      setChatLoading(false);
+      setActive(false);
     }
   }
 
@@ -256,7 +304,7 @@ export function InicioContent() {
                   ) : msg.streaming ? (
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span className="text-xs">pensando...</span>
+                      <span className="text-xs">compondo resposta...</span>
                     </div>
                   ) : null}
                 </motion.div>
@@ -342,7 +390,7 @@ export function InicioContent() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
         <Card>
           <CardContent className="p-4">
@@ -352,7 +400,7 @@ export function InicioContent() {
             </div>
             <p className="text-2xl font-semibold">{stats.library}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.library === 0 ? "vazia — faça upload para começar" : "arquivos indexados"}
+              {stats.library === 0 ? "vazia" : "arquivos"}
             </p>
           </CardContent>
         </Card>
@@ -364,7 +412,19 @@ export function InicioContent() {
             </div>
             <p className="text-2xl font-semibold">{stats.memories}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.memories === 0 ? "nenhuma ainda — aprendo conforme você usa" : "fatos lembrados"}
+              {stats.memories === 0 ? "nenhuma" : "fatos"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+              <FileSearch className="h-3.5 w-3.5" />
+              <span>Documentos</span>
+            </div>
+            <p className="text-2xl font-semibold">{stats.documents}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.documents === 0 ? "nenhum" : "gerados"}
             </p>
           </CardContent>
         </Card>

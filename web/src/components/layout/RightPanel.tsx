@@ -1,44 +1,44 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Loader2, Library, FileText, Brain, ChevronRight } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader2,
+  Library,
+  Brain,
+  Eye,
+  PenLine,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAgents, type AgentName } from "@/lib/store/agents";
 
 /**
- * RightPanel — 320px. "Painel da IA" showing agent progress cards.
- * Per master-doc §4 and design-system.md.
- * Static for now: 4 cards. Will become live in Sprint 1.
+ * RightPanel — 320px. "Painel da IA" showing real-time agent progress.
+ * Reads from the agent store updated by InicioContent during a chat turn.
  */
-type StepState = "done" | "active" | "pending";
+const ICON_MAP: Record<AgentName, React.ComponentType<{ className?: string }>> = {
+  memoria: Brain,
+  bibliotecario: Library,
+  leitor: Eye,
+  orquestrador: PenLine,
+  revisor: ShieldCheck,
+};
 
-interface Step {
-  id: string;
-  label: string;
-  state: StepState;
-  detail?: string;
-  icon: "check" | "library" | "files" | "compose";
-}
+export function RightPanel() {
+  const steps = useAgents((s) => s.steps);
+  const isActive = useAgents((s) => s.isActive);
+  const sources = useAgents((s) => s.sources);
+  const tokensIn = useAgents((s) => s.tokensIn);
+  const tokensOut = useAgents((s) => s.tokensOut);
+  const cost = useAgents((s) => s.cost);
 
-const DEFAULT_STEPS: Step[] = [
-  { id: "s1", label: "Pedido entendido", state: "done", icon: "check" },
-  { id: "s2", label: "Biblioteca consultada", state: "done", icon: "library" },
-  { id: "s3", label: "4 arquivos encontrados", state: "done", icon: "files" },
-  { id: "s4", label: "Compor resposta final", state: "active", icon: "compose" },
-];
+  const doneCount = steps.filter((s) => s.state === "done").length;
+  const isAllDone = doneCount === steps.length && !isActive;
 
-const ICON_MAP = {
-  check: CheckCircle2,
-  library: Library,
-  files: FileText,
-  compose: Loader2,
-} as const;
-
-interface RightPanelProps {
-  steps?: Step[];
-}
-
-export function RightPanel({ steps = DEFAULT_STEPS }: RightPanelProps) {
   return (
     <aside
       className="hidden w-right-panel shrink-0 border-l border-neutral-200 bg-background xl:block"
@@ -49,19 +49,13 @@ export function RightPanel({ steps = DEFAULT_STEPS }: RightPanelProps) {
           <div>
             <h3 className="text-h4 font-semibold text-neutral-900">Painel da IA</h3>
             <p className="text-caption text-neutral-500">
-              Acompanhe o trabalho dos agentes
+              {isActive
+                ? "Equipe trabalhando..."
+                : isAllDone
+                ? "Última operação concluída"
+                : "Aguardando seu próximo pedido"}
             </p>
           </div>
-          <button
-            disabled
-            className="text-caption font-medium text-primary-500 disabled:opacity-50"
-            aria-label="Ver detalhes técnicos"
-          >
-            <span className="inline-flex items-center gap-0.5">
-              Ver detalhes
-              <ChevronRight className="h-3.5 w-3.5" />
-            </span>
-          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -76,23 +70,60 @@ export function RightPanel({ steps = DEFAULT_STEPS }: RightPanelProps) {
             </AnimatePresence>
           </ol>
 
-          <p className="mb-3 mt-6 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-            Memória usada
-          </p>
-          <MemoryCard />
+          {sources.length > 0 && (
+            <>
+              <p className="mb-3 mt-6 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                Fontes consultadas
+              </p>
+              <div className="space-y-2">
+                {sources.map((s, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-md border border-neutral-200 bg-card p-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary-100 text-primary-700 text-xs font-semibold">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-body-sm font-medium text-neutral-900">
+                        {s.title}
+                      </p>
+                      <p className="text-caption text-neutral-500">
+                        {((s.similarity ?? 0) * 100).toFixed(0)}% de similaridade
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
-          <p className="mb-3 mt-6 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-            Custo estimado
-          </p>
-          <CostCard />
+          {(tokensIn > 0 || tokensOut > 0) && (
+            <>
+              <p className="mb-3 mt-6 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                Custo da operação
+              </p>
+              <div className="rounded-md border border-neutral-200 bg-card p-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-h4 font-semibold text-neutral-900">
+                    ${cost.toFixed(4)}
+                  </span>
+                  <span className="text-caption text-neutral-500">
+                    {tokensIn + tokensOut} tokens
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-caption text-neutral-500">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>{tokensIn} in + {tokensOut} out</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </aside>
   );
 }
 
-function StepCard({ step, index }: { step: Step; index: number }) {
-  const Icon = ICON_MAP[step.icon];
+function StepCard({ step, index }: { step: ReturnType<typeof useAgents.getState>["steps"][number]; index: number }) {
+  const Icon = ICON_MAP[step.agent] ?? PenLine;
   const isActive = step.state === "active";
   const isDone = step.state === "done";
 
@@ -106,7 +137,7 @@ function StepCard({ step, index }: { step: Step; index: number }) {
         "flex items-center gap-3 rounded-md border p-3 text-body-sm",
         isDone && "border-success-soft-border bg-success-soft-bg",
         isActive && "border-primary-200 bg-primary-50",
-        step.state === "pending" && "border-neutral-200 bg-card"
+        step.state === "pending" && "border-neutral-200 bg-card opacity-60"
       )}
     >
       <span
@@ -118,7 +149,13 @@ function StepCard({ step, index }: { step: Step; index: number }) {
         )}
         aria-hidden="true"
       >
-        <Icon className={cn("h-4 w-4", isActive && "animate-spin")} />
+        {isActive ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isDone ? (
+          <CheckCircle2 className="h-4 w-4" />
+        ) : (
+          <Icon className="h-4 w-4" />
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <p
@@ -136,46 +173,5 @@ function StepCard({ step, index }: { step: Step; index: number }) {
         )}
       </div>
     </motion.li>
-  );
-}
-
-function MemoryCard() {
-  return (
-    <div className="flex items-start gap-3 rounded-md border border-neutral-200 bg-card p-3">
-      <span
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary-100 text-primary-700"
-        aria-hidden="true"
-      >
-        <Brain className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-body-sm font-medium text-neutral-900">
-          Tom literário, projeto livro
-        </p>
-        <p className="mt-0.5 text-caption text-neutral-500">
-          Última atualização há 3 horas
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function CostCard() {
-  return (
-    <div className="rounded-md border border-neutral-200 bg-card p-3">
-      <div className="flex items-baseline justify-between">
-        <span className="text-h4 font-semibold text-neutral-900">$0,42</span>
-        <span className="text-caption text-neutral-500">de ~$1,20</span>
-      </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100">
-        <div
-          className="h-full w-[35%] rounded-full bg-primary-500"
-          aria-hidden="true"
-        />
-      </div>
-      <p className="mt-1.5 text-caption text-neutral-500">
-        Gemini 2M input + Claude Sonnet
-      </p>
-    </div>
   );
 }
