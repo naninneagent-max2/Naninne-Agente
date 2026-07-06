@@ -1077,7 +1077,6 @@ grant execute on function public.sha256_hex(bytea)                to authenticat
 -- (set_updated_at e set_indexed_at rodam via trigger; sem grant a anon/authenticated)
 
 -- Tipos enums (precisam de USAGE em alguns clients)
-grant usage on all types in schema public to authenticated, anon;
 
 -- =============================================================================
 -- 6. STORAGE (Bucket "library")
