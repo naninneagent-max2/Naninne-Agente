@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import { anthropic } from "@ai-sdk/anthropic";
-import { streamText } from "ai";
+import { streamText, generateText as generateTextNoStream } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { embed, cosineSim, parseEmbedding } from "@/lib/ai/embeddings";
-import { generateText as generateTextNoStream } from "ai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,7 +16,7 @@ const BASE_SYSTEM = `Você é o Naninne — o "segundo cérebro digital" do Robe
 2. **É direto**: fala português brasileiro, sem floreio. Respostas claras e úteis.
 3. **Pensa antes de agir**: quando recebe um pedido, primeiro entende a intenção e o escopo, depois age.
 4. **Admite limites**: se não sabe, fala. Se precisa de mais info, pergunta.
-5. **Cita fontes**: quando usa contexto da biblioteca, cite como [1], [2], etc. NUNCA invente informações.
+5. **Cita fontes**: quando usa contexto da biblioteca ou notas, cite como [1], [2] etc. NUNCA invente informações.
 
 Você tem acesso conceitual a 4 áreas:
 - **Escrita Criativa** (livros, capítulos, ensaios, ficção)
@@ -33,77 +32,45 @@ Quando Robert pedir algo, adapte o tom e a profundidade ao que ele está fazendo
 
 Seja conciso na primeira resposta. Se Robert pedir profundidade, aí você expande.`;
 
-const REVISOR_SYSTEM = `Você é o Revisor de qualidade do Naninne. Sua função é auditar uma resposta que o Orquestrador gerou.
+const REVISOR_SYSTEM = `Você é o Revisor de qualidade do Naninne. Audite a resposta do Orquestrador.
 
 Critérios:
 1. **Aderência**: a resposta atende ao que foi pedido?
 2. **Precisão**: as informações têm base no contexto fornecido, ou há alucinações?
-3. **Citações**: se usou contexto da biblioteca, citou como [1], [2], etc?
-4. **Tom**: o tom está adequado para a área (literário/cinematográfico/executivo/técnico)?
-5. **Concisão**: há partes desnecessárias que podem ser cortadas?
+3. **Citações**: se usou contexto, citou como [1], [2] etc?
+4. **Tom**: o tom está adequado?
 
 Responda em JSON:
 {
   "approved": true|false,
-  "issues": ["lista de problemas concretos, se houver"],
-  "suggestions": ["sugestões específicas, se houver"],
-  "summary": "1 frase sobre a qualidade geral"
+  "issues": ["lista de problemas concretos"],
+  "summary": "1 frase sobre a qualidade"
 }
 
-Se a resposta for boa, aprovado=true sem issues. Seja exigente mas justo.`;
+Se a resposta for boa, aprovado=true. Seja exigente mas justo.`;
 
-const AGENTS = ["memoria", "bibliotecario", "leitor", "orquestrador", "revisor"] as const;
+const AGENTS = ["memoria", "bibliotecario", "notas", "leitor", "orquestrador", "revisor"] as const;
 type AgentName = (typeof AGENTS)[number];
-
-function formatAgentLabel(agent: AgentName): string {
-  const map: Record<AgentName, string> = {
-    memoria: "Memória",
-    bibliotecario: "Bibliotecário",
-    leitor: "Leitor de Documentos",
-    orquestrador: "Orquestrador",
-    revisor: "Revisor",
-  };
-  return map[agent];
-}
-
-function formatAgentStepLabel(agent: AgentName, status: "start" | "done", detail?: string): string {
-  const labels: Record<AgentName, { start: string; done: string }> = {
-    memoria: { start: "Carregando memórias...", done: detail || "Memórias consultadas" },
-    bibliotecario: { start: "Vasculhando biblioteca...", done: detail || "Busca concluída" },
-    leitor: { start: "Lendo documentos...", done: detail || "Documentos lidos" },
-    orquestrador: { start: "Compondo resposta...", done: detail || "Resposta composta" },
-    revisor: { start: "Auditando qualidade...", done: detail || "Auditoria concluída" },
-  };
-  return labels[agent][status];
-}
-
-type AgentStep = {
-  id: string;
-  agent: AgentName;
-  label: string;
-  state: "done" | "active" | "pending";
-  detail?: string;
-};
-
-function buildInitialSteps(): AgentStep[] {
-  return [
-    { id: "s1", agent: "memoria", label: "Memória", state: "pending" },
-    { id: "s2", agent: "bibliotecario", label: "Bibliotecário", state: "pending" },
-    { id: "s3", agent: "leitor", label: "Leitor", state: "pending" },
-    { id: "s4", agent: "orquestrador", label: "Compondo resposta", state: "pending" },
-    { id: "s5", agent: "revisor", label: "Auditoria", state: "pending" },
-  ];
-}
 
 function sseEvent(data: object): string {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
-
 function encodeSSE(data: object): Uint8Array {
   return new TextEncoder().encode(sseEvent(data));
 }
 
-async function runMemoryAgent(userId: string): Promise<{ context: string; count: number }> {
+function buildInitialSteps() {
+  return [
+    { id: "s1", agent: "memoria" as AgentName, label: "Memória", state: "pending" as const },
+    { id: "s2", agent: "bibliotecario" as AgentName, label: "Bibliotecário", state: "pending" as const },
+    { id: "s3", agent: "notas" as AgentName, label: "Notas", state: "pending" as const },
+    { id: "s4", agent: "leitor" as AgentName, label: "Leitor", state: "pending" as const },
+    { id: "s5", agent: "orquestrador" as AgentName, label: "Compondo resposta", state: "pending" as const },
+    { id: "s6", agent: "revisor" as AgentName, label: "Auditoria", state: "pending" as const },
+  ];
+}
+
+async function runMemoryAgent(userId: string) {
   try {
     const supabase = await createClient();
     const { data: memories } = await supabase
@@ -115,7 +82,7 @@ async function runMemoryAgent(userId: string): Promise<{ context: string; count:
     if (!memories || memories.length === 0) return { context: "", count: 0 };
     const lines = memories.map((m) => `- [${m.category}] ${m.fact}`);
     return {
-      context: `\n\n# Memórias persistentes sobre o Robert\n\nUse para personalizar respostas:\n${lines.join("\n")}`,
+      context: `\n\n# Memórias persistentes sobre o Robert\n\n${lines.join("\n")}`,
       count: memories.length,
     };
   } catch {
@@ -123,10 +90,7 @@ async function runMemoryAgent(userId: string): Promise<{ context: string; count:
   }
 }
 
-async function runBibliotecarioAgent(
-  userId: string,
-  query: string
-): Promise<{ context: string; count: number; sources: any[] }> {
+async function runBibliotecarioAgent(userId: string, query: string) {
   if (!query || query.length < 4) return { context: "", count: 0, sources: [] };
   try {
     const supabase = await createClient();
@@ -141,7 +105,6 @@ async function runBibliotecarioAgent(
     if (!error && rpcData) {
       chunks = rpcData as any[];
     } else {
-      // Fallback JS
       const { data: allChunks } = await supabase
         .from("document_chunks")
         .select("id, content, library_item_id, embedding")
@@ -179,8 +142,41 @@ async function runBibliotecarioAgent(
       similarity: c.similarity,
     }));
     return {
-      context: `\n\n# Contexto da biblioteca (use para responder, cite [1], [2] etc)\n\n${formatted}`,
+      context: `\n\n# Contexto da biblioteca (cite [1], [2] etc)\n\n${formatted}`,
       count: chunks.length,
+      sources,
+    };
+  } catch {
+    return { context: "", count: 0, sources: [] };
+  }
+}
+
+async function runNotasAgent(userId: string, query: string) {
+  if (!query || query.length < 4) return { context: "", count: 0, sources: [] };
+  try {
+    const supabase = await createClient();
+    const queryEmbedding = await embed(query);
+    const { data, error } = await supabase.rpc("match_notes", {
+      query_embedding: queryEmbedding,
+      match_count: 5,
+      filter_user_id: userId,
+      filter_library_item_id: null,
+    });
+    const notes: any[] = data ?? [];
+    if (error || notes.length === 0) return { context: "", count: 0, sources: [] };
+    const formatted = notes
+      .map(
+        (n, i) =>
+          `[nota ${i + 1}] (similaridade ${((n.similarity ?? 0) * 100).toFixed(0)}%${n.page_reference ? `, ref: ${n.page_reference}` : ""}, tags: ${(n.tags ?? []).join(", ") || "nenhuma"}): ${n.content.slice(0, 400)}`
+      )
+      .join("\n\n");
+    const sources = notes.map((n) => ({
+      title: `Nota: ${n.content.slice(0, 60)}`,
+      similarity: n.similarity,
+    }));
+    return {
+      context: `\n\n# Notas suas relevantes (use para personalizar)\n\n${formatted}`,
+      count: notes.length,
       sources,
     };
   } catch {
@@ -202,75 +198,42 @@ export async function POST(request: Request) {
     const userName = isLoggedIn ? user!.user_metadata?.display_name ?? user!.email : null;
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
-    // Set up SSE stream
     const stream = new ReadableStream({
       async start(controller) {
         let totalTokensIn = 0;
         let totalTokensOut = 0;
         let totalCost = 0;
-        const stepState: Record<string, { state: string; detail?: string }> = {};
-
-        // Helper to send SSE
         const send = (data: object) => controller.enqueue(encodeSSE(data));
 
-        // Send initial steps
-        const steps = buildInitialSteps();
-        send({ type: "init", steps });
+        send({ type: "init", steps: buildInitialSteps() });
 
-        // ============ AGENT 1: MEMÓRIA ============
+        // Memoria
         send({ type: "agent_start", agent: "memoria" });
-        stepState.memoria = { state: "active" };
-        send({ type: "step", stepId: "s1", state: "active" });
+        const memResult = isLoggedIn ? await runMemoryAgent(user!.id) : { context: "", count: 0 };
+        send({ type: "step", stepId: "s1", state: "done", detail: memResult.count > 0 ? `${memResult.count} memórias` : "Nenhuma" });
 
-        const memoryResult = isLoggedIn
-          ? await runMemoryAgent(user!.id)
-          : { context: "", count: 0 };
-        const memoryContext = memoryResult.context;
-        stepState.memoria = {
-          state: "done",
-          detail: memoryResult.count > 0 ? `${memoryResult.count} memórias relevantes` : "Nenhuma memória",
-        };
-        send({ type: "agent_done", agent: "memoria", detail: stepState.memoria.detail });
-        send({ type: "step", stepId: "s1", state: "done", detail: stepState.memoria.detail });
-
-        // ============ AGENT 2: BIBLIOTECÁRIO ============
+        // Bibliotecario
         send({ type: "agent_start", agent: "bibliotecario" });
-        stepState.bibliotecario = { state: "active" };
-        send({ type: "step", stepId: "s2", state: "active" });
+        const bibResult = isLoggedIn ? await runBibliotecarioAgent(user!.id, lastUserMessage) : { context: "", count: 0, sources: [] };
+        send({ type: "step", stepId: "s2", state: "done", detail: bibResult.count > 0 ? `${bibResult.count} trechos` : "Nada relevante" });
 
-        const bibResult = isLoggedIn
-          ? await runBibliotecarioAgent(user!.id, lastUserMessage)
-          : { context: "", count: 0, sources: [] };
-        const bibContext = bibResult.context;
-        stepState.bibliotecario = {
-          state: "done",
-          detail: bibResult.count > 0 ? `${bibResult.count} trechos relevantes` : "Nada relevante",
-        };
-        send({ type: "agent_done", agent: "bibliotecario", detail: stepState.bibliotecario.detail });
-        send({ type: "step", stepId: "s2", state: "done", detail: stepState.bibliotecario.detail });
+        // Notas
+        send({ type: "agent_start", agent: "notas" });
+        const notasResult = isLoggedIn ? await runNotasAgent(user!.id, lastUserMessage) : { context: "", count: 0, sources: [] };
+        send({ type: "step", stepId: "s3", state: "done", detail: notasResult.count > 0 ? `${notasResult.count} notas` : "Nenhuma" });
 
-        // ============ AGENT 3: LEITOR (no-op for now — bibliotecário já leu) ============
+        // Leitor (no-op)
         send({ type: "agent_start", agent: "leitor" });
-        send({ type: "step", stepId: "s3", state: "active" });
-        // Simulate Leitor by waiting briefly (real impl would extract specific sections)
-        await new Promise((r) => setTimeout(r, 200));
-        const leitorDetail = bibResult.count > 0 ? `${bibResult.count} trechos lidos` : "Nenhum trecho";
-        stepState.leitor = { state: "done", detail: leitorDetail };
-        send({ type: "agent_done", agent: "leitor", detail: leitorDetail });
-        send({ type: "step", stepId: "s3", state: "done", detail: leitorDetail });
+        await new Promise((r) => setTimeout(r, 150));
+        const totalBib = bibResult.count + notasResult.count;
+        send({ type: "step", stepId: "s4", state: "done", detail: totalBib > 0 ? `${totalBib} trechos lidos` : "Nenhum trecho" });
 
-        // ============ AGENT 4: ORQUESTRADOR (Claude streaming) ============
+        // Orquestrador
         send({ type: "agent_start", agent: "orquestrador" });
-        stepState.orquestrador = { state: "active" };
-        send({ type: "step", stepId: "s4", state: "active" });
-
         const greetingContext = userName
           ? `\n\n[Usuário logado: ${userName}. Cumprimente pelo nome na primeira resposta se for o início da conversa.]`
           : "";
-
-        const systemPrompt =
-          BASE_SYSTEM + greetingContext + memoryContext + bibContext;
-
+        const systemPrompt = BASE_SYSTEM + greetingContext + memResult.context + bibResult.context + notasResult.context;
         let fullResponse = "";
         try {
           const result = streamText({
@@ -279,18 +242,14 @@ export async function POST(request: Request) {
             messages: messages.map((m) => ({ role: m.role, content: m.content })),
             maxOutputTokens: 2000,
             temperature: 0.7,
-            onFinish: ({ usage, finishReason }) => {
+            onFinish: ({ usage }) => {
               if (usage) {
                 totalTokensIn += usage.inputTokens ?? 0;
                 totalTokensOut += usage.outputTokens ?? 0;
-                // Claude Sonnet 4.5: $3/M input, $15/M output
-                const costIn = (usage.inputTokens ?? 0) * 3 / 1_000_000;
-                const costOut = (usage.outputTokens ?? 0) * 15 / 1_000_000;
-                totalCost += costIn + costOut;
+                totalCost += ((usage.inputTokens ?? 0) * 3 + (usage.outputTokens ?? 0) * 15) / 1_000_000;
               }
             },
           });
-
           for await (const chunk of result.textStream) {
             fullResponse += chunk;
             send({ type: "text", content: chunk });
@@ -299,33 +258,24 @@ export async function POST(request: Request) {
           console.error("[chat] stream error:", streamErr);
           send({ type: "error", message: "Erro ao gerar resposta" });
         }
+        send({ type: "step", stepId: "s5", state: "done", detail: `${fullResponse.length} caracteres` });
 
-        stepState.orquestrador = { state: "done", detail: `${fullResponse.length} caracteres` };
-        send({ type: "agent_done", agent: "orquestrador", detail: stepState.orquestrador.detail });
-        send({ type: "step", stepId: "s4", state: "done", detail: stepState.orquestrador.detail });
-
-        // ============ AGENT 5: REVISOR (single Claude call) ============
+        // Revisor
         send({ type: "agent_start", agent: "revisor" });
-        stepState.revisor = { state: "active" };
-        send({ type: "step", stepId: "s5", state: "active" });
-
         let revisorSummary = "OK";
         try {
           const review = await generateTextNoStream({
             model: anthropic("claude-sonnet-4-5"),
             system: REVISOR_SYSTEM,
-            prompt: `Pedido do usuário: ${lastUserMessage}\n\nResposta do Orquestrador:\n\n${fullResponse}\n\nAudite.`,
+            prompt: `Pedido: ${lastUserMessage}\n\nResposta:\n\n${fullResponse}\n\nAudite.`,
             maxOutputTokens: 400,
             temperature: 0,
           });
           if (review.usage) {
             totalTokensIn += review.usage.inputTokens ?? 0;
             totalTokensOut += review.usage.outputTokens ?? 0;
-            const costIn = (review.usage.inputTokens ?? 0) * 3 / 1_000_000;
-            const costOut = (review.usage.outputTokens ?? 0) * 15 / 1_000_000;
-            totalCost += costIn + costOut;
+            totalCost += ((review.usage.inputTokens ?? 0) * 3 + (review.usage.outputTokens ?? 0) * 15) / 1_000_000;
           }
-          // Parse JSON from review
           const match = review.text.match(/\{[\s\S]*\}/);
           if (match) {
             try {
@@ -333,21 +283,12 @@ export async function POST(request: Request) {
               revisorSummary = parsed.approved
                 ? "✓ Aprovado"
                 : `⚠️ ${(parsed.issues ?? []).length} questão(ões)`;
-            } catch {
-              revisorSummary = "Auditado";
-            }
-          } else {
-            revisorSummary = "Auditado";
+            } catch { revisorSummary = "Auditado"; }
           }
-        } catch {
-          revisorSummary = "Erro na auditoria";
-        }
+        } catch { revisorSummary = "Erro na auditoria"; }
+        send({ type: "step", stepId: "s6", state: "done", detail: revisorSummary });
 
-        stepState.revisor = { state: "done", detail: revisorSummary };
-        send({ type: "agent_done", agent: "revisor", detail: revisorSummary });
-        send({ type: "step", stepId: "s5", state: "done", detail: revisorSummary });
-
-        // ============ SAVE TO GENERATED_DOCUMENTS ============
+        // Save document
         let documentId: string | null = null;
         if (isLoggedIn && fullResponse.length > 0) {
           try {
@@ -364,8 +305,8 @@ export async function POST(request: Request) {
                   tokens_in: totalTokensIn,
                   tokens_out: totalTokensOut,
                   cost_usd: totalCost,
-                  sources: bibResult.sources ?? [],
-                  agent_used: ["memoria", "bibliotecario", "leitor", "orquestrador", "revisor"],
+                  sources: [...(bibResult.sources ?? []), ...(notasResult.sources ?? [])],
+                  agent_used: ["memoria", "bibliotecario", "notas", "leitor", "orquestrador", "revisor"],
                 },
               })
               .select("id")
@@ -382,9 +323,8 @@ export async function POST(request: Request) {
           tokens_in: totalTokensIn,
           tokens_out: totalTokensOut,
           cost_usd: totalCost,
-          sources: bibResult.sources ?? [],
+          sources: [...(bibResult.sources ?? []), ...(notasResult.sources ?? [])],
         });
-
         controller.close();
       },
     });
@@ -398,9 +338,6 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("[/api/chat] error:", err);
-    return new Response(
-      `Erro: ${err instanceof Error ? err.message : "Erro desconhecido"}`,
-      { status: 500 }
-    );
+    return new Response(`Erro: ${err instanceof Error ? err.message : "Erro"}`, { status: 500 });
   }
 }

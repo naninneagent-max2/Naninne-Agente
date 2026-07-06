@@ -32,9 +32,6 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
   return results;
 }
 
-/**
- * Parse embedding that may come back as a string (Supabase REST) or number[] (direct).
- */
 export function parseEmbedding(emb: unknown): number[] | null {
   if (!emb) return null;
   if (Array.isArray(emb)) return emb;
@@ -49,10 +46,6 @@ export function parseEmbedding(emb: unknown): number[] | null {
   return null;
 }
 
-/**
- * Cosine similarity between two vectors.
- * Returns 0 if vectors don't match in length or are null.
- */
 export function cosineSim(a: number[] | null, b: number[] | null): number {
   if (!a || !b || a.length !== b.length || a.length === 0) return 0;
   let dot = 0, na = 0, nb = 0;

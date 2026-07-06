@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars, react/no-unescaped-entities */
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, react/no-unescaped-entities */
+/* eslint-disable react/no-unescaped-entities */
 "use client";
 
 import * as React from "react";
@@ -22,6 +23,8 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronRight,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
 import { useAuth } from "@/lib/store/auth";
+import { LibraryDetail } from "./LibraryDetail";
 import { cn } from "@/lib/utils";
 
 type LibraryItem = {
@@ -40,6 +44,12 @@ type LibraryItem = {
   added_at: string;
   tags: string[];
   status: string;
+  error_message?: string;
+  metadata?: {
+    chunk_count?: number;
+    text_length?: number;
+    pages?: number;
+  };
 };
 
 type SearchResult = {
@@ -47,7 +57,7 @@ type SearchResult = {
   library_item_id: string;
   content: string;
   similarity: number;
-  item: { id: string; title: string; format: string; mime_type: string } | null;
+  item: { id: string; title: string;  mime_type: string } | null;
 };
 
 const TYPE_FILTERS = [
@@ -66,10 +76,18 @@ const TYPE_LABELS: Record<LibraryItem["type"], string> = {
 };
 
 function formatSize(kb: number): string {
-  if (kb < 1000) return `${kb} KB`;
+  if (kb < 1000) return `${Math.max(0, kb)} KB`;
   if (kb < 1_000_000) return `${(kb / 1024).toFixed(1)} MB`;
   return `${(kb / 1_048_576).toFixed(2)} GB`;
 }
+
+const STATUS_STYLES: Record<string, { label: string; class: string; icon: React.ComponentType<{ className?: string }> }> = {
+  ready: { label: "Indexado", class: "bg-green-100 text-green-700", icon: CheckCircle2 },
+  processing: { label: "Processando", class: "bg-blue-100 text-blue-700", icon: Loader2 },
+  pending: { label: "Pendente", class: "bg-neutral-100 text-neutral-700", icon: Loader2 },
+  failed: { label: "Falhou", class: "bg-red-100 text-red-700", icon: AlertCircle },
+  archived: { label: "Arquivado", class: "bg-neutral-100 text-neutral-500", icon: FileText },
+};
 
 const ACCEPT = ".pdf,.txt,.md,.csv,.json,.docx,application/pdf,text/plain,text/markdown,text/csv,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -81,7 +99,7 @@ export function BibliotecaContent() {
   const [query, setQuery] = React.useState("");
 
   // Upload state
-  const [uploading, setUploading] = React.useState<{ name: string; status: string; error?: string } | null>(null);
+  const [uploading, setUploading] = React.useState<{ name: string; status: string; error?: string; itemId?: string }[]>([]);
   const [dragActive, setDragActive] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -89,6 +107,9 @@ export function BibliotecaContent() {
   const [searching, setSearching] = React.useState(false);
   const [searchResults, setSearchResults] = React.useState<SearchResult[] | null>(null);
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
+
+  // Detail view
+  const [detailId, setDetailId] = React.useState<string | null>(null);
 
   const reload = React.useCallback(() => {
     if (!user) return;
@@ -105,26 +126,29 @@ export function BibliotecaContent() {
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     for (const file of Array.from(files)) {
-      setUploading({ name: file.name, status: "enviando..." });
+      const tempId = `up-${Date.now()}-${Math.random()}`;
+      setUploading((u) => [...u, { name: file.name, status: "enviando..." }]);
+
+      // Re-check it was actually added with tempId
       const fd = new FormData();
       fd.append("file", file);
       try {
         const res = await fetch("/api/library/upload", { method: "POST", body: fd });
         const data = await res.json();
         if (data.ok) {
-          setUploading({
-            name: file.name,
-            status: `indexado (${data.item.chunks} trechos)`,
-          });
-          setTimeout(() => setUploading(null), 2500);
+          setUploading((u) => u.map((x) => x.name === file.name && x.status === "enviando..." ? { ...x, status: `indexado (${data.item.chunks} trechos)`, itemId: data.item.id } : x));
+          setTimeout(() => {
+            setUploading((u) => u.filter((x) => x.itemId !== data.item.id));
+          }, 3000);
           reload();
         } else {
-          setUploading({ name: file.name, status: "erro", error: data.error });
-          setTimeout(() => setUploading(null), 5000);
+          setUploading((u) => u.map((x) => x.name === file.name && x.status === "enviando..." ? { ...x, status: "erro", error: data.error } : x));
+          setTimeout(() => {
+            setUploading((u) => u.filter((x) => x.status !== "erro"));
+          }, 8000);
         }
       } catch (err) {
-        setUploading({ name: file.name, status: "erro", error: "rede" });
-        setTimeout(() => setUploading(null), 5000);
+        setUploading((u) => u.map((x) => x.name === file.name && x.status === "enviando..." ? { ...x, status: "erro", error: "rede" } : x));
       }
     }
   }
@@ -179,10 +203,10 @@ export function BibliotecaContent() {
         <Button
           className="gap-1.5"
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading !== null}
+          disabled={uploading.some((u) => u.status === "enviando...")}
         >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {uploading ? "Enviando..." : "Enviar arquivos"}
+          {uploading.some((u) => u.status === "enviando...") ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          Enviar arquivos
         </Button>
         <input
           ref={fileInputRef}
@@ -194,38 +218,48 @@ export function BibliotecaContent() {
         />
       </header>
 
-      {/* Upload status toast */}
+      {/* Upload status toasts */}
       <AnimatePresence>
-        {uploading && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className={cn(
-              "mb-4 rounded-lg border p-3 flex items-center gap-2 text-sm",
-              uploading.error
-                ? "border-red-200 bg-red-50 text-red-700"
-                : uploading.status.includes("indexado")
-                ? "border-green-200 bg-green-50 text-green-700"
-                : "border-blue-200 bg-blue-50 text-blue-700"
-            )}
-          >
-            {uploading.error ? (
-              <AlertCircle className="h-4 w-4" />
-            ) : uploading.status.includes("indexado") ? (
-              <CheckCircle2 className="h-4 w-4" />
-            ) : (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            )}
-            <span className="flex-1 truncate">
-              <strong>{uploading.name}</strong> — {uploading.status}
-              {uploading.error && `: ${uploading.error}`}
-            </span>
-          </motion.div>
-        )}
+        {uploading.map((u, i) => {
+          const isError = u.status === "erro";
+          const isSuccess = u.status.includes("indexado");
+          return (
+            <motion.div
+              key={`${u.name}-${i}`}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: 100 }}
+              className={cn(
+                "mb-2 rounded-lg border p-3 flex items-center gap-2 text-sm",
+                isError
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : isSuccess
+                  ? "border-green-200 bg-green-50 text-green-700"
+                  : "border-blue-200 bg-blue-50 text-blue-700"
+              )}
+            >
+              {isError ? <AlertCircle className="h-4 w-4 shrink-0" /> :
+                isSuccess ? <CheckCircle2 className="h-4 w-4 shrink-0" /> :
+                <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <p className="truncate"><strong>{u.name}</strong> — {u.status}</p>
+                {u.error && <p className="text-xs mt-0.5">{u.error}</p>}
+              </div>
+              {isError && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setUploading((arr) => arr.filter((_, idx) => idx !== i))}
+                  className="shrink-0"
+                >
+                  Fechar
+                </Button>
+              )}
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
 
-      {/* Drag-and-drop zone (only when empty) */}
       {items.length === 0 ? (
         <div
           onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
@@ -243,19 +277,18 @@ export function BibliotecaContent() {
           <EmptyState
             icon={LibraryIcon}
             title="Sua biblioteca está vazia"
-            description="Arraste um PDF, DOCX, TXT ou Markdown aqui, ou clique em Enviar arquivos acima. A busca semântica é ativada após a indexação."
+            description="Arraste um PDF, DOCX, TXT ou Markdown aqui, ou clique em Enviar arquivos acima. Suportamos até 50MB por arquivo."
             cta={{ label: "Selecionar arquivo", onClick: () => fileInputRef.current?.click() }}
           />
         </div>
       ) : (
         <>
-          {/* Search bar */}
           <div className="mb-4 flex gap-2">
             <div className="relative flex-1">
               <Sparkles className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
               <Input
                 type="search"
-                placeholder="Busca semântica — ex: 'o que esse texto diz sobre poder invisível'"
+                placeholder='Busca semântica — ex: "o que esse texto diz sobre poder invisível"'
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);
@@ -279,7 +312,6 @@ export function BibliotecaContent() {
             </Button>
           </div>
 
-          {/* Search results */}
           {searchResults && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -312,11 +344,7 @@ export function BibliotecaContent() {
                       }}
                     >
                       <div className="flex items-start gap-3">
-                        {isOpen ? (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                        )}
+                        {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-medium text-primary">[{i + 1}]</span>
@@ -337,7 +365,6 @@ export function BibliotecaContent() {
             </motion.div>
           )}
 
-          {/* Type chips */}
           <div className="mb-6 flex flex-wrap gap-2">
             {TYPE_FILTERS.map((f) => {
               const Icon = f.icon;
@@ -357,7 +384,6 @@ export function BibliotecaContent() {
             })}
           </div>
 
-          {/* File list (drag-drop area when has items) */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
             onDragLeave={() => setDragActive(false)}
@@ -377,33 +403,60 @@ export function BibliotecaContent() {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filtered.map((item) => (
-                  <Card key={item.id} variant="hover-elevate" className="h-full">
-                    <CardContent className="flex h-full flex-col gap-3 p-4">
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-600">
-                          {React.createElement(ICON_BY_TYPE[item.type], { className: "h-5 w-5" })}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-body-sm font-medium text-neutral-900" title={item.name}>{item.name}</p>
-                          <p className="mt-0.5 text-caption text-neutral-500">
-                            {TYPE_LABELS[item.type]} · {formatSize(item.size_kb)}
-                          </p>
+                {filtered.map((item) => {
+                  const statusMeta = STATUS_STYLES[item.status] ?? STATUS_STYLES.ready;
+                  const StatusIcon = statusMeta.icon;
+                  return (
+                    <Card
+                      key={item.id}
+                      variant="hover-elevate"
+                      className="h-full cursor-pointer"
+                      onClick={() => setDetailId(item.id)}
+                    >
+                      <CardContent className="flex h-full flex-col gap-3 p-4">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-600">
+                            {React.createElement(ICON_BY_TYPE[item.type] ?? FileText, { className: "h-5 w-5" })}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-body-sm font-medium text-neutral-900" title={item.name}>
+                              {item.name}
+                            </p>
+                            <p className="mt-0.5 text-caption text-neutral-500">
+                              {TYPE_LABELS[item.type]} · {formatSize(item.size_kb)}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="mt-auto flex items-center justify-between text-caption text-neutral-500">
-                        <span>
-                          {item.status === "ready" ? "✓ indexado" : item.status}
-                        </span>
-                        <span>{new Date(item.added_at).toLocaleDateString("pt-BR")}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <div className="mt-auto flex items-center justify-between text-caption">
+                          <Badge className={cn("border-0 gap-1", statusMeta.class)} size="sm">
+                            <StatusIcon className={cn("h-3 w-3", item.status === "processing" && "animate-spin")} />
+                            {statusMeta.label}
+                          </Badge>
+                          <span className="text-muted-foreground">
+                            {new Date(item.added_at).toLocaleDateString("pt-BR")}
+                          </span>
+                        </div>
+                        {item.metadata?.chunk_count !== undefined && (
+                          <p className="text-caption text-muted-foreground">
+                            {item.metadata.chunk_count} trechos · {item.metadata.text_length?.toLocaleString("pt-BR")} chars
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>
         </>
+      )}
+
+      {detailId && (
+        <LibraryDetail
+          itemId={detailId}
+          onClose={() => setDetailId(null)}
+          onDeleted={() => reload()}
+        />
       )}
     </div>
   );
