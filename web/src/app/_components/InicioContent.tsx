@@ -93,13 +93,16 @@ export function InicioContent() {
 
   async function loadConversation(convId: string) {
     try {
-      const r = await fetch(`/api/conversations?id=${convId}`, { cache: "no-store" });
+      const r = await fetch(`/api/conversations/${convId}/messages`, { cache: "no-store" });
       const d = await r.json();
       if (d.messages) {
         setMessages(d.messages.map((m: any) => ({
           id: `loaded-${m.id}`,
           role: m.role,
           content: m.content,
+          tokens_input: m.tokens_input,
+          tokens_output: m.tokens_output,
+          cost_usd: m.cost_usd,
         })));
         setConversationId(convId);
       }
@@ -207,11 +210,39 @@ export function InicioContent() {
             } else if (event.type === "error") {
               throw new Error(event.message);
             } else if (event.type === "done") {
+              const finalConvId = event.conversation_id ?? conversationId;
               setSources(event.sources ?? []);
               setTokens(event.tokens_in ?? 0, event.tokens_out ?? 0, event.cost_usd ?? 0);
               setDocumentId(event.document_id);
               if (event.conversation_id && !conversationId) {
                 setConversationId(event.conversation_id);
+              }
+
+              // Salva as duas mensagens (user + assistant) via endpoint dedicado
+              // (evita race condition do insert dentro do SSE stream)
+              if (finalConvId) {
+                fetch(`/api/conversations/${finalConvId}/messages`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    messages: [
+                      {
+                        role: "user",
+                        content: text,
+                      },
+                      {
+                        role: "assistant",
+                        content: accumulated,
+                        agent_used: "orchestrator",
+                        model_used: "claude-sonnet-4-5",
+                        tokens_input: event.tokens_in,
+                        tokens_output: event.tokens_out,
+                        cost_usd: event.cost_usd,
+                        sources: event.sources ?? [],
+                      },
+                    ],
+                  }),
+                }).catch((err) => console.error("[client] save messages error", err));
               }
               loadRecentConvs();
             }
