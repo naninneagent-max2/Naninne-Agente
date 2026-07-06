@@ -2,6 +2,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { streamText, generateText as generateTextNoStream } from "ai";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { embed, cosineSim, parseEmbedding } from "@/lib/ai/embeddings";
 
 export const runtime = "nodejs";
@@ -294,9 +295,12 @@ export async function POST(request: Request) {
         let documentId: string | null = null;
         if (isLoggedIn && fullResponse.length > 0) {
           try {
+            // Create admin client for inserts (bypasses RLS for user_id setting)
+            const adminClient = createAdminClient();
+            
             // Create conversation if needed
             if (!conversationId) {
-              const { data: conv } = await supabase
+              const { data: conv } = await adminClient
                 .from("conversations")
                 .insert({
                   user_id: user!.id,
@@ -311,7 +315,7 @@ export async function POST(request: Request) {
             }
 
             // Save document
-            const { data: doc } = await supabase
+            const { data: doc } = await adminClient
               .from("generated_documents")
               .insert({
                 user_id: user!.id,
@@ -335,7 +339,7 @@ export async function POST(request: Request) {
 
             // Save messages to the conversation
             if (conversationId) {
-              const { error: msgErr } = await supabase.from("messages").insert([
+              const { error: msgErr } = await adminClient.from("messages").insert([
                 {
                   user_id: user!.id,
                   conversation_id: conversationId,
@@ -363,7 +367,7 @@ export async function POST(request: Request) {
                 console.log("[chat] messages inserted successfully for", conversationId);
               }
               // Update conversation last_message_at
-              await supabase
+              await adminClient
                 .from("conversations")
                 .update({
                   last_message_at: new Date().toISOString(),
