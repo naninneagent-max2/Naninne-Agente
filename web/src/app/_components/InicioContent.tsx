@@ -10,6 +10,7 @@ import type { Citation } from "@/app/_components/chat/CitationModal";
 import { TemplatesPanel } from "@/app/_components/chat/TemplatesPanel";
 import { NewNoteModal } from "@/app/_components/notes/NewNoteModal";
 import { fetchProjects } from "@/lib/hooks/use-projects";
+import { useToast } from "@/lib/hooks/use-toast";
 import {
   Paperclip,
   Mic,
@@ -88,6 +89,7 @@ export function InicioContent() {
       else window.localStorage.removeItem("naninne:activeProjectSlug");
     } catch {}
   }, [activeProjectSlug]);
+  const toast = useToast();
   const [openCitation, setOpenCitation] = React.useState<Citation | null>(null);
   const [noteModalOpen, setNoteModalOpen] = React.useState(false);
   const [noteModalContent, setNoteModalContent] = React.useState<string>("");
@@ -237,6 +239,16 @@ export function InicioContent() {
       });
 
       if (!res.ok || !res.body) {
+        if (res.status === 429) {
+          try {
+            const data = await res.json();
+            toast.error("Limite atingido", data.message ?? "Tente novamente mais tarde.");
+            throw new Error("rate_limited");
+          } catch (e) {
+            if ((e as Error).message === "rate_limited") throw e;
+            throw new Error(`HTTP ${res.status}`);
+          }
+        }
         const txt = await res.text();
         throw new Error(txt || `HTTP ${res.status}`);
       }
@@ -341,6 +353,9 @@ export function InicioContent() {
       reloadStats();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Erro de rede";
+      if (errorMsg !== "rate_limited") {
+        toast.error("Erro no chat", errorMsg);
+      }
       setChatError(errorMsg);
       setMessages((m) =>
         m.map((msg) =>

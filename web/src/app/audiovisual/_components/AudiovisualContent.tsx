@@ -26,6 +26,8 @@ import { ProjectPicker } from "@/components/ui/project-picker";
 import { useProjects } from "@/lib/hooks/use-projects";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm/ConfirmDialog";
+import { useToast } from "@/lib/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 type Scene = {
@@ -63,6 +65,8 @@ export function AudiovisualContent() {
   const [parseError, setParseError] = React.useState<string | null>(null);
   const [showForm, setShowForm] = React.useState(false);
   const [editingScene, setEditingScene] = React.useState<Scene | null>(null);
+  const toast = useToast();
+  const [confirmDeleteScene, setConfirmDeleteScene] = React.useState<Scene | null>(null);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
   const reload = React.useCallback(() => {
@@ -104,10 +108,15 @@ export function AudiovisualContent() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Deletar esta cena?")) return;
-    await fetch(`/api/audiovisual/scenes?id=${id}`, { method: "DELETE" });
-    reload();
+  async function handleDeleteScene(scene: Scene) {
+    const res = await fetch(`/api/audiovisual/scenes/${scene.id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Cena deletada", `"${scene.title}" foi removida.`);
+      reload();
+    } else {
+      toast.error("Erro ao deletar cena");
+    }
+    setConfirmDeleteScene(null);
   }
 
   async function copyPrompt(scene: Scene) {
@@ -319,7 +328,7 @@ export function AudiovisualContent() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleDelete(scene.id)}
+                        onClick={() => setConfirmDeleteScene(scene)}
                         title="Deletar"
                         className="text-muted-foreground hover:text-red-600"
                       >
@@ -333,11 +342,22 @@ export function AudiovisualContent() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDeleteScene}
+        onClose={() => setConfirmDeleteScene(null)}
+        onConfirm={async () => { if (confirmDeleteScene) await handleDeleteScene(confirmDeleteScene); }}
+        title="Deletar esta cena?"
+        description={`A cena "${confirmDeleteScene?.title}" será removida permanentemente.`}
+        confirmText="Sim, deletar"
+        confirmPhrase={confirmDeleteScene?.title}
+      />
     </div>
   );
 }
 
 function SceneEditor({ scene, onClose }: { scene: Scene; onClose: () => void }) {
+  const toast = useToast();
   const [title, setTitle] = React.useState(scene.title);
   const [description, setDescription] = React.useState(scene.cinematic_description);
   const [composition, setComposition] = React.useState(scene.composition ?? "");
@@ -367,7 +387,10 @@ function SceneEditor({ scene, onClose }: { scene: Scene; onClose: () => void }) 
       onClose();
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Erro");
+{
+        const errMsg = err instanceof Error ? err.message : "Erro";
+        toast.error("Erro ao salvar cena", errMsg);
+      }
     } finally {
       setSaving(false);
     }

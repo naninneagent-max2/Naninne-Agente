@@ -3,6 +3,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { streamText, generateText as generateTextNoStream } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit } from "@/lib/utils/rate-limit";
 import { embed, cosineSim, parseEmbedding } from "@/lib/ai/embeddings";
 
 export const runtime = "nodejs";
@@ -200,6 +201,28 @@ export async function POST(request: Request) {
     const isLoggedIn = !!user;
     const userName = isLoggedIn ? user!.user_metadata?.display_name ?? user!.email : null;
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+
+    // Rate limit (only for logged-in users)
+    if (isLoggedIn) {
+      const limit = await checkRateLimit(user!.id);
+      if (!limit.allowed) {
+        return new Response(
+          JSON.stringify({
+            error: "rate_limited",
+            message: limit.message,
+            hourly_count: limit.hourlyCount,
+            hourly_limit: limit.hourlyLimit,
+            daily_count: limit.dailyCount,
+            daily_limit: limit.dailyLimit,
+            reset_in_minutes: limit.resetInMinutes,
+          }),
+          {
+            status: 429,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+    }
 
     const stream = new ReadableStream({
       async start(controller) {

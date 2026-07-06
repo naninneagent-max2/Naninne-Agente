@@ -28,6 +28,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm/ConfirmDialog";
+import { useToast } from "@/lib/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -115,6 +117,7 @@ interface LibraryDetailProps {
 
 export function LibraryDetail({ itemId, onClose, onDeleted }: LibraryDetailProps) {
   const [item, setItem] = React.useState<LibraryItem | null>(null);
+  const toast = useToast();
   const [chunks, setChunks] = React.useState<Chunk[]>([]);
   const [notes, setNotes] = React.useState<Note[]>([]);
   const [memories, setMemories] = React.useState<Memory[]>([]);
@@ -162,20 +165,25 @@ export function LibraryDetail({ itemId, onClose, onDeleted }: LibraryDetailProps
       .finally(() => setLoading(false));
   }, [loadItem, loadChunks, loadNotes, loadMemories]);
 
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+
   async function handleDelete() {
-    if (!confirm(`Deletar "${item?.title}"?\n\nIsso vai remover o arquivo do storage, todos os chunks indexados, e todas as notas vinculadas. Esta ação não pode ser desfeita.`)) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/library/${itemId}`, { method: "DELETE" });
       if (res.ok) {
+        toast.success("Arquivo deletado", `"${item?.title}" foi removido da biblioteca.`);
         onDeleted();
         onClose();
       } else {
         const data = await res.json();
-        alert(`Erro: ${data.error}`);
+        toast.error("Erro ao deletar", data.error ?? "Tente novamente.");
       }
+    } catch (e) {
+      toast.error("Erro de conexão", String(e));
     } finally {
       setDeleting(false);
+      setConfirmDelete(false);
     }
   }
 
@@ -189,10 +197,11 @@ export function LibraryDetail({ itemId, onClose, onDeleted }: LibraryDetailProps
       });
       const data = await res.json();
       if (data.ok) {
+        toast.success("Reindexação iniciada", `${item?.title} será processado em background.`);
         loadItem();
         loadChunks();
       } else {
-        alert(`Erro: ${data.error}`);
+        toast.error("Erro ao reindexar", data.error ?? "Tente novamente.");
       }
     } finally {
       setRetrying(false);
@@ -304,7 +313,7 @@ export function LibraryDetail({ itemId, onClose, onDeleted }: LibraryDetailProps
                 {retrying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClick={handleDelete} disabled={deleting} title="Deletar" className="text-muted-foreground hover:text-red-600">
+            <Button variant="ghost" size="icon" onClick={() => setConfirmDelete(true)} disabled={deleting} title="Deletar" className="text-muted-foreground hover:text-red-600">
               {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             </Button>
             <Button variant="ghost" size="icon" onClick={onClose}>
