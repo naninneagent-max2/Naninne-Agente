@@ -390,6 +390,10 @@ export async function POST(request: Request) {
           }
         }
 
+        // Wait a tiny bit to ensure all DB writes flush before closing stream
+        await new Promise((r) => setTimeout(r, 100));
+        
+        console.log("[chat] about to send done. conversationId=", conversationId, "docId=", documentId);
         send({
           type: "done",
           document_id: documentId,
