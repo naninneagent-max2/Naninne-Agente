@@ -8,6 +8,7 @@ import { CitationFooter } from "@/app/_components/chat/CitationFooter";
 import { CitationModal } from "@/app/_components/chat/CitationModal";
 import type { Citation } from "@/app/_components/chat/CitationModal";
 import { TemplatesPanel } from "@/app/_components/chat/TemplatesPanel";
+import { TEMPLATES } from "@/app/_components/chat/templates/catalog";
 import { NewNoteModal } from "@/app/_components/notes/NewNoteModal";
 import { fetchProjects } from "@/lib/hooks/use-projects";
 import { useToast } from "@/lib/hooks/use-toast";
@@ -24,6 +25,7 @@ import {
   Lightbulb,
   Rocket,
   FileSearch,
+  Search,
   Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,7 +54,8 @@ type ChatMessage = {
 };
 
 const QUICK_ACTIONS = [
-  { id: "qa1", label: "Escrever capítulo", icon: FileSearch, prompt: "Estou escrevendo um capítulo. Me ajude a estruturar a argumentação." },
+  { id: "qa1", label: "Escrever capítulo", icon: FileSearch,
+  Search, prompt: "Estou escrevendo um capítulo. Me ajude a estruturar a argumentação." },
   { id: "qa2", label: "Buscar na biblioteca", icon: Library, prompt: "Vou fazer upload de um arquivo. Quero busca semântica depois." },
   { id: "qa3", label: "Pesquisar na web", icon: Sparkles, prompt: "Pesquise dados atualizados sobre pecuária de corte no Brasil." },
   { id: "qa4", label: "Analisar planilha", icon: History, prompt: "Vou subir uma planilha de controle. Me ajude a encontrar KPIs." },
@@ -74,9 +77,20 @@ export function InicioContent() {
   const [memoryToast, setMemoryToast] = React.useState<string | null>(null);
   const [conversationId, setConversationId] = React.useState<string | null>(null);
   const [recentConvs, setRecentConvs] = React.useState<Array<{ id: string; title: string; last_message_at: string | null; message_count: number }>>([]);
+  const [slashOpen, setSlashOpen] = React.useState(false);
+  const [slashIndex, setSlashIndex] = React.useState(0);
+  const [nudgeDismissedFor, setNudgeDismissedFor] = React.useState<Set<string>>(new Set());
+  const [convsFilter, setConvsFilter] = React.useState("");
   const [activeProjectSlug, setActiveProjectSlug] = React.useState<string | null>(null);
 
   // Persiste active project no localStorage
+  // Should we nudge for memories? (every ≥4 user msgs without nudge for this conv id)
+  const userMsgCount = messages.filter((m) => m.role === "user").length;
+  const shouldNudgeMemory =
+    userMsgCount >= 4 &&
+    conversationId !== null &&
+    !nudgeDismissedFor.has(conversationId);
+
   React.useEffect(() => {
     try {
       const stored = window.localStorage.getItem("naninne:activeProjectSlug");
@@ -396,6 +410,19 @@ export function InicioContent() {
     }
   }
 
+  // Compute slash matches for command palette
+  const slashQuery = input.startsWith("/") ? input.slice(1).toLowerCase() : "";
+  const slashMatches = React.useMemo(() => {
+    if (!slashOpen) return [];
+    return TEMPLATES.filter((t) => {
+      const q = slashQuery;
+      return !q ||
+        t.id.toLowerCase().includes(q) ||
+        t.label.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q);
+    }).slice(0, 8);
+  }, [slashOpen, slashQuery]);
+
   if (!user) {
     return (
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-gradient-to-b from-background to-muted/30">
@@ -429,9 +456,18 @@ export function InicioContent() {
         className="flex items-center justify-between mb-6"
       >
         <div>
-          <p className="text-sm text-muted-foreground">
-            Olá, <span className="font-medium text-foreground">{user.display_name || user.email}</span>
-          </p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Olá, <span className="font-medium text-foreground">{user.display_name || user.email}</span></span>
+            {activeProjectSlug && (() => {
+              const p = projects.find((pr) => pr.slug === activeProjectSlug);
+              return p ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: p.color + "20", color: p.color }}>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: p.color }} />
+                  {p.name}
+                </span>
+              ) : null;
+            })()}
+          </div>
           <h1 className="text-2xl font-semibold tracking-tight mt-1">O que vamos fazer hoje?</h1>
         </div>
         <Button variant="ghost" size="sm" onClick={logout} className="gap-2">
@@ -454,14 +490,27 @@ export function InicioContent() {
 
       {recentConvs.length > 0 && messages.length === 0 && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Conversas recentes</h2>
-            <Button variant="ghost" size="sm" onClick={startNewConversation} className="text-xs">
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Conversas recentes</h2>
+            <Button variant="ghost" size="sm" onClick={startNewConversation} className="text-xs shrink-0">
               + Nova conversa
             </Button>
           </div>
+          <div className="mb-3 relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              placeholder="Buscar nas suas conversas..."
+              value={convsFilter}
+              onChange={(e) => setConvsFilter(e.target.value)}
+              className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {recentConvs.slice(0, 6).map((conv) => (
+            {recentConvs
+              .filter((c) => !convsFilter || c.title.toLowerCase().includes(convsFilter.toLowerCase()))
+              .slice(0, 12)
+              .map((conv) => (
               <Card
                 key={conv.id}
                 variant="hover-elevate"
@@ -496,7 +545,42 @@ export function InicioContent() {
         <Card className="mb-6">
           <CardContent className="p-6 space-y-4">
             <AnimatePresence>
-              {messages.map((msg) => (
+              {shouldNudgeMemory && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center gap-3"
+            >
+              <Sparkles className="h-4 w-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">Salvar insights desta conversa?</p>
+                <p className="text-caption text-muted-foreground">
+                  Detectei {userMsgCount} mensagens suas. Posso extrair padrões e preferências para lembrar nas próximas conversas.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  if (conversationId) setNudgeDismissedFor((s) => new Set(s).add(conversationId));
+                }}
+              >
+                Agora não
+              </Button>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  await handleRemember();
+                  if (conversationId) setNudgeDismissedFor((s) => new Set(s).add(conversationId));
+                }}
+                disabled={extractingMemories}
+              >
+                {extractingMemories ? "Salvando..." : "Salvar"}
+              </Button>
+            </motion.div>
+          )}
+
+          {messages.map((msg) => (
                 <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, y: 8 }}
@@ -602,6 +686,39 @@ export function InicioContent() {
               />
             </div>
 
+{slashOpen && (
+              <div className="absolute z-dropdown bottom-full mb-2 left-0 right-12 max-h-[280px] overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
+                <div className="px-3 py-2 text-caption uppercase tracking-wide text-muted-foreground border-b border-border">
+                  {slashMatches.length > 0 ? `Templates (${slashMatches.length})` : "Nenhum template"}
+                </div>
+                {slashMatches.map((t, i) => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setInput(t.prompt);
+                      setSlashOpen(false);
+                    }}
+                    onMouseEnter={() => setSlashIndex(i)}
+                    className={
+                      "w-full text-left px-3 py-2 flex items-start gap-2 hover:bg-accent transition-colors " +
+                      (i === slashIndex ? "bg-accent" : "")
+                    }
+                  >
+                    <span className="text-base shrink-0">{t.icon}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="text-sm font-medium block">/{t.id.replace("tpl-", "")} · {t.label}</span>
+                      <span className="text-caption text-muted-foreground line-clamp-1">{t.description}</span>
+                    </span>
+                  </button>
+                ))}
+                {slashMatches.length === 0 && (
+                  <div className="px-3 py-4 text-caption text-muted-foreground text-center">
+                    Nenhum template combina. Continue digitando ou pressione Esc.
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-end gap-2 pt-2 border-t border-border/40">
               <Button type="button" variant="ghost" size="icon" className="shrink-0" aria-label="Anexar arquivo" disabled>
                 <Paperclip className="h-4 w-4" />
@@ -609,14 +726,42 @@ export function InicioContent() {
               <div className="flex-1 relative">
                 <textarea
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setInput(v);
+                    if (v.startsWith("/")) {
+                      setSlashOpen(true);
+                      setSlashIndex(0);
+                    } else {
+                      setSlashOpen(false);
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
+                      // If slash menu is open and a template is highlighted, apply it
+                      if (slashOpen && slashMatches.length > 0) {
+                        const t = slashMatches[slashIndex];
+                        if (t) {
+                          setInput(t.prompt);
+                          setSlashOpen(false);
+                          return;
+                        }
+                      }
                       handleSend();
+                    } else if (slashOpen) {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setSlashIndex((i) => Math.min(i + 1, slashMatches.length - 1));
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setSlashIndex((i) => Math.max(i - 1, 0));
+                      } else if (e.key === "Escape") {
+                        setSlashOpen(false);
+                      }
                     }
                   }}
-                  placeholder="Pergunte algo ao Naninne ou descreva o que você quer fazer..."
+                  placeholder='Pergunte ao Naninne ou digite "/" para templates...'
                   rows={2}
                   className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
                   disabled={chatLoading}
