@@ -297,6 +297,13 @@ export async function POST(request: Request) {
           try {
             // Create admin client for inserts (bypasses RLS for user_id setting)
             const adminClient = createAdminClient();
+            console.log("[chat] admin client env check", {
+              hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+              hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+              urlVal: process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(0, 30),
+            });
+            console.log("[chat] user.id", user?.id?.slice(0, 8));
+            console.log("[chat] conversationId before conv insert", conversationId);
             
             // Create conversation if needed
             if (!conversationId) {
