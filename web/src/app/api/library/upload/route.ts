@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
