@@ -22,6 +22,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
+import { ProjectPicker } from "@/components/ui/project-picker";
+import { useProjects } from "@/lib/hooks/use-projects";
 import { cn } from "@/lib/utils";
 
 type Analysis = {
@@ -74,6 +76,8 @@ export default function MercadoPage() {
   const [uploading, setUploading] = React.useState<{ name: string; status: string; error?: string } | null>(null);
   const [current, setCurrent] = React.useState<Analysis | null>(null);
   const [focus, setFocus] = React.useState("");
+  const [projectId, setProjectId] = React.useState<string | null>(null);
+  const { projects: availableProjects } = useProjects();
   const [dragActive, setDragActive] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -95,6 +99,7 @@ export default function MercadoPage() {
     const fd = new FormData();
     fd.append("file", file);
     if (focus) fd.append("focus", focus);
+    if (projectId) fd.append("project_id", projectId);
     try {
       const res = await fetch("/api/mercado/analyze", { method: "POST", body: fd });
       const data = await res.json();
@@ -181,16 +186,26 @@ export default function MercadoPage() {
           )}
         </AnimatePresence>
 
-        {/* Focus question */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium mb-1">Pergunta específica (opcional)</label>
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Projeto (opcional)</label>
+            <ProjectPicker
+              projects={availableProjects}
+              value={projectId}
+              onChange={setProjectId}
+              label=""
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Pergunta específica (opcional)</label>
           <input
             type="text"
             value={focus}
             onChange={(e) => setFocus(e.target.value)}
-            placeholder='Ex: "Onde estão os outliers de preço?" ou "Qual categoria cresceu mais?"'
+            placeholder="Ex: Onde estão os outliers de preço? Qual categoria cresceu mais?"
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
+          </div>
         </div>
 
         {/* Drag-drop zone */}

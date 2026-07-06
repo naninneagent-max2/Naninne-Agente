@@ -8,9 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
 import { useAuth } from "@/lib/store/auth";
+import { ProjectPicker, ProjectBadge } from "@/components/ui/project-picker";
+import { useProjects } from "@/lib/hooks/use-projects";
 
 type Document = {
   id: string;
+  project_id?: string | null;
+  project?: { id: string; name: string; color: string } | null;
   title: string;
   description: string | null;
   format: string;
@@ -39,18 +43,20 @@ export default function DocumentosPage() {
   const [loading, setLoading] = React.useState(true);
   const [selected, setSelected] = React.useState<Document | null>(null);
   const [deleting, setDeleting] = React.useState<string | null>(null);
+  const [filterProject, setFilterProject] = React.useState<string | null>(null);
+  const { projects: allProjects } = useProjects();
 
   const reload = React.useCallback(() => {
     if (!user) return;
     setLoading(true);
-    fetch("/api/documents", { cache: "no-store" })
+    fetch(`/api/documents${filterProject ? `?project_id=${filterProject}` : ""}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => setDocs(data.documents ?? []))
       .catch(() => setDocs([]))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, filterProject]);
 
-  React.useEffect(() => { reload(); }, [reload]);
+  React.useEffect(() => { reload(); }, [reload, filterProject]);
 
   async function handleDelete(id: string) {
     setDeleting(id);
@@ -147,6 +153,16 @@ export default function DocumentosPage() {
           Tudo que o Naninne gerou: respostas, capítulos, análises, relatórios.
         </p>
 
+        <div className="mb-6 max-w-sm">
+          <ProjectPicker
+            projects={allProjects}
+            value={filterProject}
+            onChange={setFilterProject}
+            label="Filtrar por projeto"
+            noneLabel="Todos os projetos"
+          />
+        </div>
+
         {docs.length === 0 ? (
           <EmptyState
             icon={FileText}
@@ -182,7 +198,12 @@ export default function DocumentosPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm font-medium text-neutral-900 truncate">{doc.title}</p>
+                      <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-neutral-900 truncate">{doc.title}</p>
+                          {doc.project_id && allProjects.find(p => p.id === doc.project_id) && (
+                            <ProjectBadge project={allProjects.find(p => p.id === doc.project_id)!} />
+                          )}
+                        </div>
                       <p className="text-caption text-muted-foreground">
                         {new Date(doc.created_at).toLocaleString("pt-BR")}
                       </p>

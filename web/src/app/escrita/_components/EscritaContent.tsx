@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { motion } from "framer-motion";
 import {
   BookOpen,
   Plus,
@@ -17,10 +18,13 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { ProjectPicker } from "@/components/ui/project-picker";
+import { useProjects } from "@/lib/hooks/use-projects";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/store/auth";
 
 type Chapter = {
@@ -46,6 +50,8 @@ export function EscritaContent() {
   const [chapters, setChapters] = React.useState<Chapter[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [generating, setGenerating] = React.useState(false);
+  const [projectId, setProjectId] = React.useState<string | null>(null);
+  const { projects: availableProjects } = useProjects();
   const [genToast, setGenToast] = React.useState<string | null>(null);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
@@ -153,19 +159,25 @@ async function handleCreate() {
   const charCount = content.length;
   const selectedChapter = chapters.find((c) => c.id === selectedId);
 
+  const [genOpen, setGenOpen] = React.useState(false);
+  const [genForm, setGenForm] = React.useState({ prompt: "", projectId: null as string | null, length: "long" as "long" | "short" });
+
   async function handleGenerate() {
-    const prompt = window.prompt(
-      "Sobre o que você quer escrever?\n\nEx: 'Estou no capítulo 4 sobre poder invisível. Cruze com O Príncipe e escreva 8 páginas no tom do Cap. III'",
-      ""
-    );
-    if (!prompt || !prompt.trim()) return;
+    setGenForm({ prompt: "", projectId, length: "long" });
+    setGenOpen(true);
+  }
+
+  async function handleGenerateSubmit() {
+    if (!genForm.prompt.trim()) return;
+    const { prompt, projectId: pid, length } = genForm;
+    setGenOpen(false);
     setGenerating(true);
     setGenToast("Gerando capítulo (~3.600 palavras, 1-3 min)...");
     try {
       const res = await fetch("/api/escrita/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim(), project_id: null, style: "literário", length: "long" }),
+        body: JSON.stringify({ prompt: prompt.trim(), project_id: pid, style: "literário", length }),
       });
       if (!res.ok || !res.body) {
         const txt = await res.text();
@@ -302,6 +314,7 @@ async function handleCreate() {
     // shown in the editor view
   }
   return (
+    <>
     <div className="px-6 py-10 md:px-10 md:py-12">
       <div className="mx-auto max-w-[1100px]">
         <div className="mb-6 flex items-end justify-between">
@@ -312,7 +325,7 @@ async function handleCreate() {
                 Projeto de escrita
               </Badge>
             </div>
-  {genToast && (
+          {genToast && (
             <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center gap-2 text-sm">
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-primary" />}
               <span>{genToast}</span>
@@ -403,5 +416,73 @@ async function handleCreate() {
         )}
       </div>
     </div>
+
+      {/* Generate chapter modal */}
+      {genOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-background rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4"
+          >
+            <div>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Wand2 className="h-5 w-5 text-primary" />
+                Gerar capítulo com IA
+              </h2>
+              <p className="text-caption text-muted-foreground mt-1">
+                O Naninne vai escrever usando o que está na sua biblioteca, notas e memórias.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Sobre o que escrever?</label>
+              <Textarea
+                value={genForm.prompt}
+                onChange={(e) => setGenForm((f) => ({ ...f, prompt: e.target.value }))}
+                placeholder="Ex: 'Estou no capítulo 4 sobre poder invisível. Cruze com O Príncipe e escreva 8 páginas no tom do Cap. III.'"
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Comprimento</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setGenForm((f) => ({ ...f, length: "short" }))}
+                    className={`text-xs px-3 py-2 rounded-md border ${genForm.length === "short" ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"}`}
+                  >
+                    3 páginas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGenForm((f) => ({ ...f, length: "long" }))}
+                    className={`text-xs px-3 py-2 rounded-md border ${genForm.length === "long" ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/40"}`}
+                  >
+                    8 páginas
+                  </button>
+                </div>
+              </div>
+              <ProjectPicker
+                projects={availableProjects}
+                value={genForm.projectId}
+                onChange={(id) => setGenForm((f) => ({ ...f, projectId: id }))}
+                label="Projeto (opcional)"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setGenOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleGenerateSubmit} disabled={!genForm.prompt.trim()} className="flex-1 gap-1.5">
+                <Wand2 className="h-4 w-4" />
+                Gerar
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+    </>
   );
 }

@@ -25,10 +25,15 @@ export async function GET(request: Request) {
       if (error) return NextResponse.json({ error: error.message }, { status: 404 });
       return NextResponse.json({ document: doc });
     }
-    const { data: documents, error } = await supabase
+    const projectId = url.searchParams.get("project_id");
+    let query = supabase
       .from("generated_documents")
-      .select("id, title, description, format, status, metadata, created_at, updated_at")
-      .eq("user_id", user.id)
+      .select("id, title, description, format, status, metadata, project_id, created_at, updated_at")
+      .eq("user_id", user.id);
+    if (projectId) {
+      query = query.eq("project_id", projectId);
+    }
+    const { data: documents, error } = await query
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) {

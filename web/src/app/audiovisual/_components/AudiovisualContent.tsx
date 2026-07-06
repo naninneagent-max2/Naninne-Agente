@@ -22,6 +22,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { ProjectPicker } from "@/components/ui/project-picker";
+import { useProjects } from "@/lib/hooks/use-projects";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
@@ -55,6 +57,8 @@ export function AudiovisualContent() {
   const [script, setScript] = React.useState("");
   const [style, setStyle] = React.useState("cinematic-dark");
   const [count, setCount] = React.useState(8);
+  const [projectId, setProjectId] = React.useState<string | null>(null);
+  const { projects: availableProjects } = useProjects();
   const [parsing, setParsing] = React.useState(false);
   const [parseError, setParseError] = React.useState<string | null>(null);
   const [showForm, setShowForm] = React.useState(false);
@@ -83,7 +87,7 @@ export function AudiovisualContent() {
       const res = await fetch("/api/audiovisual/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script, style, count }),
+        body: JSON.stringify({ script, style, count, project_id: projectId }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -205,6 +209,12 @@ export function AudiovisualContent() {
                       </p>
                     </div>
                   </div>
+                  <ProjectPicker
+                    projects={availableProjects}
+                    value={projectId}
+                    onChange={setProjectId}
+                    label="Projeto (opcional)"
+                  />
                   {parseError && (
                     <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
                       {parseError}
