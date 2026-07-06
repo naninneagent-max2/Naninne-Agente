@@ -1,25 +1,19 @@
-import { PagePlaceholder } from "@/components/ui/page-placeholder";
-
-export const metadata = {
-  title: "Gestão Técnica",
-  description: "Saúde do sistema, logs de agentes, custos e pendências.",
-};
+"use client";
+import { Settings } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 
 export default function GestaoPage() {
   return (
-    <PagePlaceholder
-      title="Gestão Técnica"
-      subtitle="Saúde do sistema, logs, custos e fila de operações"
-      description="Painel transparente sobre o que está acontecendo: modelos em uso, custos por operação, fila de tarefas, logs auditáveis e checkpoints de segurança."
-      sprint="Previsão: Sprint 2"
-      iconName="Wrench"
-      features={[
-        "Status ao vivo de cada agente (ocioso, em operação, com erro)",
-        "Custos discriminados por modelo, projeto e tipo de operação",
-        "Fila de tarefas longas com possibilidade de pausar, retomar ou cancelar",
-        "Logs auditáveis de toda ação irreversível (quem pediu, quando, com aprovação)",
-        "Repositórios GitHub sincronizados e migrations Supabase pendentes",
-      ]}
-    />
+    <div className="px-6 py-10 md:px-10 md:py-12">
+      <div className="mx-auto max-w-[1100px]">
+        <h1 className="text-h1 text-neutral-900 mb-1">Gestão</h1>
+        <p className="text-body text-neutral-600 mb-6">Projetos, usuários, permissões e custos</p>
+        <EmptyState
+          icon={Settings}
+          title="Nenhum projeto configurado"
+          description="Crie seu primeiro projeto no Naninne para começar a organizar conteúdo, memória e agentes por área de trabalho."
+        />
+      </div>
+    </div>
   );
 }

@@ -1,25 +1,19 @@
-import { PagePlaceholder } from "@/components/ui/page-placeholder";
-
-export const metadata = {
-  title: "Memória",
-  description: "Veja e edite tudo o que Naninne sabe sobre você.",
-};
+"use client";
+import { Brain } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 
 export default function MemoriaPage() {
   return (
-    <PagePlaceholder
-      title="Memória"
-      subtitle="Tudo o que Naninne lembra sobre você, seus projetos e preferências"
-      description="Aqui você vê, edita e apaga cada memória que Naninne acumulou. Total transparência e controle sobre o que entra no contexto das conversas."
-      sprint="Previsão: Sprint 1"
-      iconName="Brain"
-      features={[
-        "Timeline de memórias com data, origem e projeto associado",
-        "Editor inline: corrija, refine ou apague qualquer memória",
-        "Marcadores manuais de preferência (tom literário, formato favorito, etc.)",
-        "Modo 'soneca' para esquecer temporariamente um projeto sem perder histórico",
-        "Exportação completa de todas as memórias em JSON (portabilidade total)",
-      ]}
-    />
+    <div className="px-6 py-10 md:px-10 md:py-12">
+      <div className="mx-auto max-w-[1100px]">
+        <h1 className="text-h1 text-neutral-900 mb-1">Memória</h1>
+        <p className="text-body text-neutral-600 mb-6">Fatos importantes que o Naninne lembra de você</p>
+        <EmptyState
+          icon={Brain}
+          title="Nenhuma memória ainda"
+          description="Conforme você conversa com o Naninne, fatos importantes são lembrados automaticamente (seu estilo, preferências, projetos, pessoas)."
+        />
+      </div>
+    </div>
   );
 }

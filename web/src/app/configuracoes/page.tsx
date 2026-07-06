@@ -1,25 +1,19 @@
-import { PagePlaceholder } from "@/components/ui/page-placeholder";
-
-export const metadata = {
-  title: "Configurações",
-  description: "Conecte serviços, ajuste modelos e personalize sua experiência.",
-};
+"use client";
+import { Settings2 } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 
 export default function ConfiguracoesPage() {
   return (
-    <PagePlaceholder
-      title="Configurações"
-      subtitle="Conecte serviços, ajuste modelos e personalize sua experiência"
-      description="Tudo que você pode ajustar: chaves de API, modelos preferidos por tipo de tarefa, integrações (GitHub, Google Drive, Notion) e aparência."
-      sprint="Previsão: Sprint 1"
-      iconName="Settings"
-      features={[
-        "Chaves de API (OpenAI, Anthropic, Google) com criptografia em repouso",
-        "Escolha de modelo por tipo de tarefa (custo × qualidade por caso de uso)",
-        "Integrações com GitHub, Google Drive, Notion, WhatsApp e e-mail",
-        "Tema claro/escuro/sistema + densidade de interface (confortável/compacta)",
-        "Gerenciamento de consentimento (quais dados vão para qual modelo)",
-      ]}
-    />
+    <div className="px-6 py-10 md:px-10 md:py-12">
+      <div className="mx-auto max-w-[1100px]">
+        <h1 className="text-h1 text-neutral-900 mb-1">Configurações</h1>
+        <p className="text-body text-neutral-600 mb-6">Preferências, integrações, conta e privacidade</p>
+        <EmptyState
+          icon={Settings2}
+          title="Tudo nas configurações padrão"
+          description="Você ainda não personalizou nada. Quando ajustar, vai aparecer aqui."
+        />
+      </div>
+    </div>
   );
 }

@@ -1,25 +1,19 @@
-import { PagePlaceholder } from "@/components/ui/page-placeholder";
-
-export const metadata = {
-  title: "Documentos",
-  description: "Lista de todos os documentos gerados pelos agentes.",
-};
+"use client";
+import { FileText } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 
 export default function DocumentosPage() {
   return (
-    <PagePlaceholder
-      title="Documentos"
-      subtitle="Lista de tudo que foi gerado (atas, capítulos, relatórios, apresentações)"
-      description="Cada documento gerado pelos agentes aparece aqui, organizado por projeto, data e tipo. Tudo versionado e reversível."
-      sprint="Previsão: Sprint 1"
-      iconName="FileText"
-      features={[
-        "Lista cronológica de documentos gerados com filtros por projeto e tipo",
-        "Diff visual entre versões com restauração em 1 clique",
-        "Exportação em PDF, DOCX, Markdown e link compartilhável",
-        "Busca semântica dentro do conteúdo de todos os documentos",
-        "Agrupamento por conversa de origem (qual pedido gerou o quê)",
-      ]}
-    />
+    <div className="px-6 py-10 md:px-10 md:py-12">
+      <div className="mx-auto max-w-[1100px]">
+        <h1 className="text-h1 text-neutral-900 mb-1">Documentos</h1>
+        <p className="text-body text-neutral-600 mb-6">Atas, relatórios, contratos e documentos gerados</p>
+        <EmptyState
+          icon={FileText}
+          title="Nenhum documento gerado"
+          description="Documentos gerados pelo Naninne aparecem aqui. Você pode exportá-los em PDF, Markdown ou Word."
+        />
+      </div>
+    </div>
   );
 }
