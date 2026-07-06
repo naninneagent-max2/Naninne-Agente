@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   FileText,
+  Eye,
   Hash,
   StickyNote,
   Brain,
@@ -30,8 +31,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { FileViewer } from "./FileViewer";
 
-type Tab = "info" | "texto" | "chunks" | "notas" | "memorias";
+type Tab = "info" | "arquivo" | "chunks" | "notas" | "memorias";
 
 type LibraryItem = {
   id: string;
@@ -315,7 +317,7 @@ export function LibraryDetail({ itemId, onClose, onDeleted }: LibraryDetailProps
         <div className="flex border-b border-border px-6 bg-background">
           {([
             { id: "info", label: "Info", icon: Database, count: undefined },
-            { id: "texto", label: "Texto completo", icon: FileText, count: item.metadata?.text_length },
+            { id: "arquivo", label: "Arquivo", icon: Eye, count: undefined },
             { id: "chunks", label: "Chunks", icon: Hash, count: chunks.length },
             { id: "notas", label: "Notas", icon: StickyNote, count: notes.length },
             { id: "memorias", label: "Memórias", icon: Brain, count: memories.length },
@@ -329,7 +331,7 @@ export function LibraryDetail({ itemId, onClose, onDeleted }: LibraryDetailProps
             >
               <t.icon className="h-4 w-4" />
               {t.label}
-              {t.count !== undefined && (
+              {(t as any).count !== undefined && (
                 <span className="text-caption text-muted-foreground">({t.count})</span>
               )}
             </button>
@@ -339,7 +341,18 @@ export function LibraryDetail({ itemId, onClose, onDeleted }: LibraryDetailProps
         {/* Content */}
         <div className="p-6 max-h-[60vh] overflow-y-auto">
           {tab === "info" && <InfoTab item={item} />}
-          {tab === "texto" && <TextTab item={item} />}
+          {tab === "arquivo" && (
+            <FileViewer
+              itemId={item.id}
+              mimeType={item.mime_type}
+              format={item.format}
+              filename={item.title}
+              fileSize={item.file_size_bytes}
+              storagePath={item.storage_path}
+              fullText={item.metadata?.full_text ?? ""}
+              onDownload={handleDownload}
+            />
+          )}
           {tab === "chunks" && (
             <ChunksTab
               chunks={chunks}
@@ -411,45 +424,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TextTab({ item }: { item: LibraryItem }) {
-  const text = item.metadata?.full_text ?? "";
-  const [search, setSearch] = React.useState("");
-
-  if (!text) {
-    return (
-      <div className="text-center py-12 text-muted-foreground text-sm">
-        Texto não disponível (o arquivo pode ter sido indexado antes desta feature).
-        <br />
-        Tente re-processar.
-      </div>
-    );
-  }
-
-  const lines = text.split("\n");
-  const filtered = search.trim()
-    ? lines.filter((l) => l.toLowerCase().includes(search.toLowerCase()))
-    : lines;
-
-  return (
-    <div className="space-y-3">
-      <Input
-        placeholder="Buscar no texto..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="mb-3"
-      />
-      <div className="rounded-md border border-border bg-muted/20 p-4 max-h-[50vh] overflow-y-auto">
-        <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed">
-          {filtered.join("\n")}
-        </pre>
-      </div>
-      <p className="text-caption text-muted-foreground">
-        {filtered.length} de {lines.length} linhas
-        {search && ` (buscando "${search}")`}
-      </p>
-    </div>
-  );
-}
 
 function ChunksTab({
   chunks,
