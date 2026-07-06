@@ -335,7 +335,7 @@ export async function POST(request: Request) {
 
             // Save messages to the conversation
             if (conversationId) {
-              await supabase.from("messages").insert([
+              const { error: msgErr } = await supabase.from("messages").insert([
                 {
                   user_id: user!.id,
                   conversation_id: conversationId,
@@ -357,6 +357,11 @@ export async function POST(request: Request) {
                   model_used: "claude-sonnet-4-5",
                 },
               ]);
+              if (msgErr) {
+                console.error("[chat] messages insert error:", msgErr);
+              } else {
+                console.log("[chat] messages inserted successfully for", conversationId);
+              }
               // Update conversation last_message_at
               await supabase
                 .from("conversations")
