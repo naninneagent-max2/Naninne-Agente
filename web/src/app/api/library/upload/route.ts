@@ -155,7 +155,15 @@ export async function POST(request: Request) {
       .eq("id", item.id);
 
     // === Step 4: Upload to storage ===
-    const storagePath = `${user.id}/${item.id}/${file.name}`;
+    // Sanitize filename for Supabase Storage (alphanumeric + underscore + dash + dot only)
+    const sanitizePath = (raw: string): string => {
+      // Strip accents (NFD + remove combining marks)
+      const normalized = raw.normalize("NFD").replace(/[̀-ͯ]/g, "");
+      // Replace spaces and any non-safe chars with _
+      return normalized.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").slice(0, 120);
+    };
+    const safeName = sanitizePath(file.name);
+    const storagePath = `${user.id}/${item.id}/${safeName}`;
     const { error: uploadErr } = await supabase.storage
       .from("library")
       .upload(storagePath, buffer, { contentType: mimeType, upsert: true });
