@@ -10,6 +10,7 @@ import {
   Loader2,
   ArrowLeft,
   Sparkles,
+  Wand2,
   Download,
   FileText,
   Edit3,
@@ -44,6 +45,8 @@ export function EscritaContent() {
   const user = useAuth((s) => s.user);
   const [chapters, setChapters] = React.useState<Chapter[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [generating, setGenerating] = React.useState(false);
+  const [genToast, setGenToast] = React.useState<string | null>(null);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [savedAt, setSavedAt] = React.useState<Date | null>(null);
@@ -76,7 +79,7 @@ export function EscritaContent() {
     }
   }, [selectedId, chapters]);
 
-  async function handleCreate() {
+async function handleCreate() {
     const res = await fetch("/api/chapters", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -150,8 +153,67 @@ export function EscritaContent() {
   const charCount = content.length;
   const selectedChapter = chapters.find((c) => c.id === selectedId);
 
+  async function handleGenerate() {
+    const prompt = window.prompt(
+      "Sobre o que você quer escrever?\n\nEx: 'Estou no capítulo 4 sobre poder invisível. Cruze com O Príncipe e escreva 8 páginas no tom do Cap. III'",
+      ""
+    );
+    if (!prompt || !prompt.trim()) return;
+    setGenerating(true);
+    setGenToast("Gerando capítulo (~3.600 palavras, 1-3 min)...");
+    try {
+      const res = await fetch("/api/escrita/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: prompt.trim(), project_id: null, style: "literário", length: "long" }),
+      });
+      if (!res.ok || !res.body) {
+        const txt = await res.text();
+        throw new Error(txt || `HTTP ${res.status}`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let accumulated = "";
+      let chapterId: string | null = null;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const json = line.slice(6).trim();
+          if (!json) continue;
+          try {
+            const event = JSON.parse(json);
+            if (event.type === "text") {
+              accumulated += event.content;
+            } else if (event.type === "done") {
+              chapterId = event.chapter_id;
+            }
+          } catch {}
+        }
+      }
+      setGenToast(`Capítulo gerado (${accumulated.split(/\s+/).filter(Boolean).length} palavras)`);
+      setTimeout(() => setGenToast(null), 5000);
+      if (chapterId) {
+        setSelectedId(chapterId);
+      }
+      reload();
+    } catch (err) {
+      setGenToast(err instanceof Error ? err.message : "Erro");
+      setTimeout(() => setGenToast(null), 5000);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   if (loading) {
-    return (
+  
+
+  return (
       <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
         Carregando capítulos...
       </div>
@@ -236,6 +298,9 @@ export function EscritaContent() {
   // List view
   const totalWords = chapters.reduce((s, c) => s + c.word_count, 0);
 
+  if (genToast) {
+    // shown in the editor view
+  }
   return (
     <div className="px-6 py-10 md:px-10 md:py-12">
       <div className="mx-auto max-w-[1100px]">
@@ -247,17 +312,29 @@ export function EscritaContent() {
                 Projeto de escrita
               </Badge>
             </div>
-            <h1 className="text-h1 text-neutral-900">Escrita Criativa</h1>
+  {genToast && (
+            <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center gap-2 text-sm">
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-primary" />}
+              <span>{genToast}</span>
+            </div>
+          )}
+          <h1 className="text-h1 text-neutral-900">Escrita Criativa</h1>
             <p className="mt-1 text-body text-neutral-600">
               {chapters.length === 0
                 ? "Comece seu primeiro capítulo"
                 : `${chapters.length} ${chapters.length === 1 ? "capítulo" : "capítulos"} · ${totalWords.toLocaleString("pt-BR")} palavras no total`}
             </p>
           </div>
-          <Button onClick={handleCreate}>
-            <Plus className="h-4 w-4 mr-1" />
-            Novo capítulo
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleGenerate} disabled={generating} variant="secondary" className="gap-1.5">
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+              {generating ? "Gerando..." : "Gerar com IA"}
+            </Button>
+            <Button onClick={handleCreate} className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              Novo capítulo
+            </Button>
+          </div>
         </div>
 
         {chapters.length === 0 ? (
