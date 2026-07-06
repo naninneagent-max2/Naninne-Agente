@@ -16,6 +16,8 @@ import {
   Lightbulb,
   Rocket,
   FileSearch,
+  BookOpen,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,7 +53,6 @@ const QUICK_ACTIONS = [
 
 export function InicioContent() {
   const user = useAuth((s) => s.user);
-  // setUser reserved for future use
   const refresh = useAuth((s) => s.refresh);
   const logout = useAuth((s) => s.logout);
 
@@ -60,44 +61,48 @@ export function InicioContent() {
   const [input, setInput] = React.useState("");
   const [chatLoading, setChatLoading] = React.useState(false);
   const [chatError, setChatError] = React.useState<string | null>(null);
-  const [stats, setStats] = React.useState({ library: 0, memories: 0, sessions: 0 });
+  const [stats, setStats] = React.useState({ library: 0, memories: 0, sessions: 1 });
+  const [extractingMemories, setExtractingMemories] = React.useState(false);
+  const [memoryToast, setMemoryToast] = React.useState<string | null>(null);
+
+  const reloadStats = React.useCallback(() => {
+    if (!user) return;
+    Promise.all([
+      fetch("/api/library", { cache: "no-store" }).then((r) => r.json()).catch(() => ({ items: [] })),
+      fetch("/api/memories", { cache: "no-store" }).then((r) => r.json()).catch(() => ({ memories: [] })),
+    ]).then(([lib, mem]) => {
+      setStats((s) => ({
+        ...s,
+        library: lib.items?.length ?? 0,
+        memories: mem.memories?.length ?? 0,
+      }));
+    });
+  }, [user]);
 
   React.useEffect(() => {
     if (user) {
       fetch("/api/projects", { cache: "no-store" })
         .then((r) => r.json())
-        .then((data) => {
-          setProjects(data.projects ?? []);
-          setStats((s) => ({ ...s, sessions: 1 }));
-        })
+        .then((data) => setProjects(data.projects ?? []))
         .catch(() => setProjects([]));
+      reloadStats();
     }
-  }, [user]);
+  }, [user, reloadStats]);
 
-  React.useEffect(() => {
-    refresh();
-  }, [refresh]);
+  React.useEffect(() => { refresh(); }, [refresh]);
 
   async function handleSend(textOverride?: string) {
     const text = (textOverride ?? input).trim();
     if (!text || chatLoading) return;
 
     setChatError(null);
-    const userMsg: ChatMessage = {
-      id: `u-${Date.now()}`,
-      role: "user",
-      content: text,
-    };
+    const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: "user", content: text };
     setMessages((m) => [...m, userMsg]);
     if (!textOverride) setInput("");
     setChatLoading(true);
 
-    // Placeholder streaming message
     const assistantId = `a-${Date.now()}`;
-    setMessages((m) => [
-      ...m,
-      { id: assistantId, role: "assistant", content: "", streaming: true },
-    ]);
+    setMessages((m) => [...m, { id: assistantId, role: "assistant", content: "", streaming: true }]);
 
     try {
       const res = await fetch("/api/chat", {
@@ -111,7 +116,6 @@ export function InicioContent() {
         throw new Error(txt || `HTTP ${res.status}`);
       }
 
-      // Read streaming response
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let accumulated = "";
@@ -123,19 +127,14 @@ export function InicioContent() {
           accumulated += decoder.decode(value, { stream: true });
           setMessages((m) =>
             m.map((msg) =>
-              msg.id === assistantId
-                ? { ...msg, content: accumulated, streaming: true }
-                : msg
+              msg.id === assistantId ? { ...msg, content: accumulated, streaming: true } : msg
             )
           );
         }
       }
 
-      // Mark streaming as done
       setMessages((m) =>
-        m.map((msg) =>
-          msg.id === assistantId ? { ...msg, streaming: false } : msg
-        )
+        m.map((msg) => (msg.id === assistantId ? { ...msg, streaming: false } : msg))
       );
       setStats((s) => ({ ...s, sessions: s.sessions + 1 }));
     } catch (err) {
@@ -143,9 +142,7 @@ export function InicioContent() {
       setChatError(errorMsg);
       setMessages((m) =>
         m.map((msg) =>
-          msg.id === assistantId
-            ? { ...msg, content: `Erro: ${errorMsg}`, streaming: false }
-            : msg
+          msg.id === assistantId ? { ...msg, content: `Erro: ${errorMsg}`, streaming: false } : msg
         )
       );
     } finally {
@@ -153,15 +150,40 @@ export function InicioContent() {
     }
   }
 
-  // ============ NOT LOGGED IN: Login screen ============
+  async function handleRemember() {
+    if (messages.length < 2 || extractingMemories) return;
+    setExtractingMemories(true);
+    try {
+      const res = await fetch("/api/memories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "extract",
+          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+      const data = await res.json();
+      const n = data.extracted ?? 0;
+      if (n > 0) {
+        setMemoryToast(`${n} ${n === 1 ? "memória salva" : "memórias salvas"}`);
+        setTimeout(() => setMemoryToast(null), 3000);
+        reloadStats();
+      } else {
+        setMemoryToast(data.deduplicated ? "Já lembrado" : "Nada memorável nesta conversa");
+        setTimeout(() => setMemoryToast(null), 3000);
+      }
+    } catch {
+      setMemoryToast("Erro ao salvar memórias");
+      setTimeout(() => setMemoryToast(null), 3000);
+    } finally {
+      setExtractingMemories(false);
+    }
+  }
+
   if (!user) {
     return (
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-gradient-to-b from-background to-muted/30">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
-        >
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
           <div className="text-center mb-8">
             <motion.div
               initial={{ scale: 0.9 }}
@@ -171,9 +193,7 @@ export function InicioContent() {
               <Brain className="h-7 w-7" />
             </motion.div>
             <h1 className="text-3xl font-semibold tracking-tight mb-2">Naninne</h1>
-            <p className="text-sm text-muted-foreground">
-              Seu segundo cérebro digital
-            </p>
+            <p className="text-sm text-muted-foreground">Seu segundo cérebro digital</p>
           </div>
           <Card>
             <CardContent className="pt-6">
@@ -185,10 +205,8 @@ export function InicioContent() {
     );
   }
 
-  // ============ LOGGED IN: Command Hub ============
   return (
     <div className="flex-1 overflow-y-auto px-6 py-8 max-w-5xl mx-auto w-full">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -198,9 +216,7 @@ export function InicioContent() {
           <p className="text-sm text-muted-foreground">
             Olá, <span className="font-medium text-foreground">{user.display_name || user.email}</span>
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight mt-1">
-            O que vamos fazer hoje?
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight mt-1">O que vamos fazer hoje?</h1>
         </div>
         <Button variant="ghost" size="sm" onClick={logout} className="gap-2">
           <LogOut className="h-4 w-4" />
@@ -208,21 +224,11 @@ export function InicioContent() {
         </Button>
       </motion.div>
 
-      {/* Projects badges */}
       {projects.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="mb-6 flex flex-wrap gap-2 items-center"
-        >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-6 flex flex-wrap gap-2 items-center">
           <span className="text-xs text-muted-foreground">Projetos:</span>
           {projects.map((p) => (
-            <Badge
-              key={p.id}
-              variant="outline"
-              className="gap-1.5"
-              style={{ borderColor: p.color, color: p.color }}
-            >
+            <Badge key={p.id} variant="outline" className="gap-1.5" style={{ borderColor: p.color, color: p.color }}>
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: p.color }} />
               {p.name}
             </Badge>
@@ -230,12 +236,7 @@ export function InicioContent() {
         </motion.div>
       )}
 
-      {/* Chat */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Card className="mb-6">
           <CardContent className="p-6 space-y-4">
             <AnimatePresence>
@@ -268,12 +269,16 @@ export function InicioContent() {
               </div>
             )}
 
-            {/* Empty state */}
+            {memoryToast && (
+              <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-md p-2 flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                {memoryToast}
+              </div>
+            )}
+
             {messages.length === 0 && (
               <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Comece uma conversa ou escolha uma ação rápida:
-                </p>
+                <p className="text-sm text-muted-foreground mb-4">Comece uma conversa ou escolha uma ação rápida:</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {QUICK_ACTIONS.map((action) => (
                     <button
@@ -290,7 +295,6 @@ export function InicioContent() {
               </div>
             )}
 
-            {/* Input */}
             <div className="flex items-end gap-2 pt-2 border-t border-border/40">
               <Button type="button" variant="ghost" size="icon" className="shrink-0" aria-label="Anexar arquivo" disabled>
                 <Paperclip className="h-4 w-4" />
@@ -311,6 +315,18 @@ export function InicioContent() {
                   disabled={chatLoading}
                 />
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                aria-label="Salvar na memória"
+                onClick={handleRemember}
+                disabled={messages.length < 2 || extractingMemories}
+                title="Salvar na memória"
+              >
+                {extractingMemories ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              </Button>
               <Button type="button" variant="ghost" size="icon" className="shrink-0" aria-label="Voz" disabled>
                 <Mic className="h-4 w-4" />
               </Button>
@@ -322,7 +338,6 @@ export function InicioContent() {
         </Card>
       </motion.div>
 
-      {/* Real stats — all start at 0 */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
