@@ -254,17 +254,31 @@ export async function POST(request: Request) {
       });
     } catch (processErr) {
       const msg = processErr instanceof Error ? processErr.message : "Erro";
-      // Cleanup: delete storage + mark failed
-      await deleteFromStorage(user.id, item.id, file.name);
-      await supabase
-        .from("library_items")
-        .update({
-          status: "failed",
-          error_message: msg,
-          storage_path: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", item.id);
+      const isTransient = /429|quota|Too Many|ResourceExhausted/i.test(msg);
+      // For transient (rate-limit) errors, KEEP the file in storage so /reprocess can retry.
+      // For hard errors, clean up storage.
+      if (!isTransient) {
+        await deleteFromStorage(user.id, item.id, file.name);
+        await supabase
+          .from("library_items")
+          .update({
+            status: "failed",
+            error_message: msg,
+            storage_path: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", item.id);
+      } else {
+        await supabase
+          .from("library_items")
+          .update({
+            status: "failed",
+            error_message: msg,
+            // Keep storage_path so user can click "Reprocessar" later
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", item.id);
+      }
       return NextResponse.json({ error: msg }, { status: 500 });
     }
   } catch (err) {
