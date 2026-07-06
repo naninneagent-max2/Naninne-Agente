@@ -348,15 +348,26 @@ function SceneEditor({ scene, onClose }: { scene: Scene; onClose: () => void }) 
   async function handleSave() {
     setSaving(true);
     try {
-      // Use notes API as update mechanism — we need a separate endpoint
-      // For simplicity, just delete + re-insert
-      // Actually, let me create a proper update endpoint
-      // For now, do an update via direct supabase
-      // unused: const _ = await import("@/lib/supabase/server");
-      // Can't use server in client. Use a regular update API
-      // Let me create one inline
-      // For now, return without saving
+      const tags = tagsStr.split(",").map((t) => t.trim()).filter(Boolean);
+      const res = await fetch(`/api/audiovisual/scenes/${scene.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          cinematic_description: description,
+          composition: composition || null,
+          midjourney_prompt: midjourneyPrompt,
+          tags,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Erro ao salvar");
+      }
       onClose();
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Erro");
     } finally {
       setSaving(false);
     }
@@ -397,9 +408,7 @@ function SceneEditor({ scene, onClose }: { scene: Scene; onClose: () => void }) 
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar alterações
             </Button>
-            <p className="text-caption text-muted-foreground text-center">
-              (Edição completa será polida no próximo sprint)
-            </p>
+            
           </CardContent>
         </Card>
       </div>

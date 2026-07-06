@@ -44,6 +44,7 @@ export default function DocumentosPage() {
   const [selected, setSelected] = React.useState<Document | null>(null);
   const [deleting, setDeleting] = React.useState<string | null>(null);
   const [filterProject, setFilterProject] = React.useState<string | null>(null);
+  const [exportOpen, setExportOpen] = React.useState(false);
   const { projects: allProjects } = useProjects();
 
   const reload = React.useCallback(() => {
@@ -101,20 +102,53 @@ export default function DocumentosPage() {
               {selected.metadata?.cost_usd !== undefined && (
                 <Badge variant="neutral">${selected.metadata.cost_usd.toFixed(4)}</Badge>
               )}
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  const blob = new Blob([(selected as any).content ?? ""], { type: "text/markdown" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${selected.title}.md`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-              >
-                <Download className="h-4 w-4 mr-1" /> Baixar
-              </Button>
+              <div className="relative">
+                <Button
+                  variant="secondary"
+                  onClick={() => setExportOpen(!exportOpen)}
+                >
+                  <Download className="h-4 w-4 mr-1" /> Exportar ▾
+                </Button>
+                {exportOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setExportOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-md shadow-lg overflow-hidden min-w-[160px]">
+                      <button
+                        onClick={() => {
+                          const blob = new Blob([(selected as any).content ?? ""], { type: "text/markdown" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `${selected.title}.md`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          setExportOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2"
+                      >
+                        <FileText className="h-4 w-4" /> Markdown (.md)
+                      </button>
+                      <a
+                        href={`/api/documents/${selected.id}/export?format=docx`}
+                        download
+                        onClick={() => setExportOpen(false)}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2"
+                      >
+                        <FileText className="h-4 w-4 text-blue-600" /> Word (.docx)
+                      </a>
+                      <a
+                        href={`/api/documents/${selected.id}/export?format=pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setExportOpen(false)}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2 border-t border-border"
+                      >
+                        <FileText className="h-4 w-4 text-red-600" /> PDF (imprimir)
+                      </a>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 

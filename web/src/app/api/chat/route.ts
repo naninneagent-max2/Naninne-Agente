@@ -188,6 +188,8 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const messages: Array<{ role: "user" | "assistant"; content: string }> = body.messages ?? [];
+    const projectId: string | null = body.project_id ?? null;
+    let conversationId: string | null = body.conversation_id ?? null;
     if (messages.length === 0) {
       return new Response("Mensagens vazias", { status: 400 });
     }
@@ -288,14 +290,32 @@ export async function POST(request: Request) {
         } catch { revisorSummary = "Erro na auditoria"; }
         send({ type: "step", stepId: "s6", state: "done", detail: revisorSummary });
 
-        // Save document
+        // Save document + conversation
         let documentId: string | null = null;
         if (isLoggedIn && fullResponse.length > 0) {
           try {
+            // Create conversation if needed
+            if (!conversationId) {
+              const { data: conv } = await supabase
+                .from("conversations")
+                .insert({
+                  user_id: user!.id,
+                  project_id: projectId,
+                  title: lastUserMessage.slice(0, 80).trim() || "Nova conversa",
+                  message_count: 2,
+                  last_message_at: new Date().toISOString(),
+                })
+                .select("id")
+                .single();
+              if (conv) conversationId = conv.id;
+            }
+
+            // Save document
             const { data: doc } = await supabase
               .from("generated_documents")
               .insert({
                 user_id: user!.id,
+                project_id: projectId,
                 title: lastUserMessage.slice(0, 100) || "Conversa",
                 description: "Resposta do chat Naninne",
                 format: "markdown",
@@ -312,14 +332,50 @@ export async function POST(request: Request) {
               .select("id")
               .single();
             if (doc) documentId = doc.id;
+
+            // Save messages to the conversation
+            if (conversationId) {
+              await supabase.from("messages").insert([
+                {
+                  user_id: user!.id,
+                  conversation_id: conversationId,
+                  project_id: projectId,
+                  role: "user",
+                  content: lastUserMessage,
+                },
+                {
+                  user_id: user!.id,
+                  conversation_id: conversationId,
+                  project_id: projectId,
+                  role: "assistant",
+                  content: fullResponse,
+                  agent_used: "orquestrador",
+                  sources: [...(bibResult.sources ?? []), ...(notasResult.sources ?? [])],
+                  tokens_input: totalTokensIn,
+                  tokens_output: totalTokensOut,
+                  cost_usd: totalCost,
+                  model_used: "claude-sonnet-4-5",
+                },
+              ]);
+              // Update conversation last_message_at
+              await supabase
+                .from("conversations")
+                .update({
+                  last_message_at: new Date().toISOString(),
+                  message_count: 2,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", conversationId);
+            }
           } catch (e) {
-            console.error("[chat] save document error:", e);
+            console.error("[chat] save error:", e);
           }
         }
 
         send({
           type: "done",
           document_id: documentId,
+          conversation_id: conversationId,
           tokens_in: totalTokensIn,
           tokens_out: totalTokensOut,
           cost_usd: totalCost,

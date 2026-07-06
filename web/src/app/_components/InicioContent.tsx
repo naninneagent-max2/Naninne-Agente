@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import * as React from "react";
@@ -62,6 +63,8 @@ export function InicioContent() {
   const [stats, setStats] = React.useState({ library: 0, memories: 0, documents: 0, sessions: 1 });
   const [extractingMemories, setExtractingMemories] = React.useState(false);
   const [memoryToast, setMemoryToast] = React.useState<string | null>(null);
+  const [conversationId, setConversationId] = React.useState<string | null>(null);
+  const [recentConvs, setRecentConvs] = React.useState<Array<{ id: string; title: string; last_message_at: string | null; message_count: number }>>([]);
 
   // Agent store
   const resetAgents = useAgents((s) => s.reset);
@@ -72,6 +75,43 @@ export function InicioContent() {
   const setTokens = useAgents((s) => s.setTokens);
   const setDocumentId = useAgents((s) => s.setDocumentId);
   const chatLoading = useAgents((s) => s.isActive);
+
+    const loadRecentConvs = React.useCallback(async () => {
+    if (!user) return;
+    try {
+      const r = await fetch("/api/conversations", { cache: "no-store" });
+      const d = await r.json();
+      setRecentConvs(d.conversations ?? []);
+    } catch {
+      setRecentConvs([]);
+    }
+  }, [user]);
+
+  React.useEffect(() => {
+    if (user) loadRecentConvs();
+  }, [user, loadRecentConvs]);
+
+  async function loadConversation(convId: string) {
+    try {
+      const r = await fetch(`/api/conversations?id=${convId}`, { cache: "no-store" });
+      const d = await r.json();
+      if (d.messages) {
+        setMessages(d.messages.map((m: any) => ({
+          id: `loaded-${m.id}`,
+          role: m.role,
+          content: m.content,
+        })));
+        setConversationId(convId);
+      }
+    } catch (err) {
+      console.error("load conversation failed", err);
+    }
+  }
+
+  function startNewConversation() {
+    setMessages([]);
+    setConversationId(null);
+  }
 
   const reloadStats = React.useCallback(() => {
     if (!user) return;
@@ -121,7 +161,7 @@ export function InicioContent() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMsg] }),
+        body: JSON.stringify({ messages: [...messages, userMsg], conversation_id: conversationId, project_id: null }),
       });
 
       if (!res.ok || !res.body) {
@@ -170,6 +210,10 @@ export function InicioContent() {
               setSources(event.sources ?? []);
               setTokens(event.tokens_in ?? 0, event.tokens_out ?? 0, event.cost_usd ?? 0);
               setDocumentId(event.document_id);
+              if (event.conversation_id && !conversationId) {
+                setConversationId(event.conversation_id);
+              }
+              loadRecentConvs();
             }
           } catch (parseErr) {
             // Ignore parse errors for partial lines
@@ -281,6 +325,46 @@ export function InicioContent() {
               {p.name}
             </Badge>
           ))}
+        </motion.div>
+      )}
+
+      {recentConvs.length > 0 && messages.length === 0 && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Conversas recentes</h2>
+            <Button variant="ghost" size="sm" onClick={startNewConversation} className="text-xs">
+              + Nova conversa
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {recentConvs.slice(0, 6).map((conv) => (
+              <Card
+                key={conv.id}
+                variant="hover-elevate"
+                className="cursor-pointer"
+                onClick={() => loadConversation(conv.id)}
+              >
+                <CardContent className="p-3 flex items-start gap-3">
+                  <History className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-900 truncate">{conv.title}</p>
+                    <p className="text-caption text-muted-foreground mt-0.5">
+                      {conv.message_count} mensagens · {conv.last_message_at ? new Date(conv.last_message_at).toLocaleDateString("pt-BR") : "hoje"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {messages.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-3 flex justify-end">
+          <Button variant="ghost" size="sm" onClick={startNewConversation} className="text-xs gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" />
+            Nova conversa
+          </Button>
         </motion.div>
       )}
 
