@@ -49,7 +49,7 @@ Responda em JSON:
 
 Se a resposta for boa, aprovado=true. Seja exigente mas justo.`;
 
-const AGENTS = ["memoria", "bibliotecario", "notas", "leitor", "orquestrador", "revisor"] as const;
+const AGENTS = ["memoria", "bibliotecario", "notas", "leitor", "orchestrator", "revisor"] as const;
 type AgentName = (typeof AGENTS)[number];
 
 function sseEvent(data: object): string {
@@ -65,7 +65,7 @@ function buildInitialSteps() {
     { id: "s2", agent: "bibliotecario" as AgentName, label: "Bibliotecário", state: "pending" as const },
     { id: "s3", agent: "notas" as AgentName, label: "Notas", state: "pending" as const },
     { id: "s4", agent: "leitor" as AgentName, label: "Leitor", state: "pending" as const },
-    { id: "s5", agent: "orquestrador" as AgentName, label: "Compondo resposta", state: "pending" as const },
+    { id: "s5", agent: "orchestrator" as AgentName, label: "Compondo resposta", state: "pending" as const },
     { id: "s6", agent: "revisor" as AgentName, label: "Auditoria", state: "pending" as const },
   ];
 }
@@ -231,7 +231,7 @@ export async function POST(request: Request) {
         send({ type: "step", stepId: "s4", state: "done", detail: totalBib > 0 ? `${totalBib} trechos lidos` : "Nenhum trecho" });
 
         // Orquestrador
-        send({ type: "agent_start", agent: "orquestrador" });
+        send({ type: "agent_start", agent: "orchestrator" });
         const greetingContext = userName
           ? `\n\n[Usuário logado: ${userName}. Cumprimente pelo nome na primeira resposta se for o início da conversa.]`
           : "";
@@ -326,7 +326,7 @@ export async function POST(request: Request) {
                   tokens_out: totalTokensOut,
                   cost_usd: totalCost,
                   sources: [...(bibResult.sources ?? []), ...(notasResult.sources ?? [])],
-                  agent_used: ["memoria", "bibliotecario", "notas", "leitor", "orquestrador", "revisor"],
+                  agent_used: ["memoria", "bibliotecario", "notas", "leitor", "orchestrator", "revisor"],
                 },
               })
               .select("id")
@@ -349,7 +349,7 @@ export async function POST(request: Request) {
                   project_id: projectId,
                   role: "assistant",
                   content: fullResponse,
-                  agent_used: "orquestrador",
+                  agent_used: "orchestrator",
                   sources: [...(bibResult.sources ?? []), ...(notasResult.sources ?? [])],
                   tokens_input: totalTokensIn,
                   tokens_output: totalTokensOut,
