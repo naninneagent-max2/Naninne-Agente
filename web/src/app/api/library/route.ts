@@ -16,7 +16,7 @@ export async function GET() {
     }
     const { data: files, error } = await supabase
       .from("library_items")
-      .select("id, title, format, mime_type, file_size_bytes, project_id, status, created_at")
+      .select("id, title, format, mime_type, file_size_bytes, project_id, status, created_at, metadata")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(100);
