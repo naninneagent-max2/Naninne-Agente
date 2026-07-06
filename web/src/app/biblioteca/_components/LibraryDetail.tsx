@@ -349,7 +349,16 @@ export function LibraryDetail({ itemId, onClose, onDeleted }: LibraryDetailProps
 
         {/* Content */}
         <div className="p-6 max-h-[60vh] overflow-y-auto">
-          {tab === "info" && <InfoTab item={item} />}
+          {tab === "info" && <InfoTab item={item} onReprocessed={() => {
+  // Trigger refetch by changing key/forcing re-fetch
+  // Simplest: call the same fetch from the modal
+  const fetchAgain = async () => {
+    const res = await fetch(`/api/library/${itemId}`);
+    const data = await res.json();
+    if (data.item) setItem(data.item);
+  };
+  void fetchAgain();
+}} />}
           {tab === "arquivo" && (
             <FileViewer
               itemId={item.id}
@@ -390,10 +399,63 @@ export function LibraryDetail({ itemId, onClose, onDeleted }: LibraryDetailProps
   );
 }
 
-function InfoTab({ item }: { item: LibraryItem }) {
+function InfoTab({ item, onReprocessed }: { item: LibraryItem; onReprocessed?: () => void }) {
   const meta = item.metadata ?? {};
+  const [reprocessing, setReprocessing] = React.useState(false);
+  const toast = useToast();
+  const isFailed = item.status === "failed";
+
+  const handleReprocess = React.useCallback(async () => {
+    setReprocessing(true);
+    try {
+      const res = await fetch(`/api/library/${item.id}/reprocess`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        toast.error("Falha ao reprocessar", data.error || "Tente novamente");
+        return;
+      }
+      if (data.already_ready) {
+        toast.info("Já está indexado", data.message);
+      } else {
+        toast.success("Arquivo reindexado", `${data.chunks} trechos em ${Math.round((data.text_length ?? 0) / 1000)}k chars.`);
+      }
+      onReprocessed?.();
+    } catch (e) {
+      toast.error("Erro de rede", "Tente novamente em alguns segundos.");
+    } finally {
+      setReprocessing(false);
+    }
+  }, [item.id, onReprocessed]);
+
   return (
     <div className="space-y-4">
+      {isFailed && item.error_message && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 space-y-2">
+          <p className="text-xs font-medium text-destructive">Erro no processamento</p>
+          <p className="text-xs text-muted-foreground break-words line-clamp-3 font-mono">
+            {item.error_message}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReprocess}
+            disabled={reprocessing}
+            className="w-full"
+          >
+            {reprocessing ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+                Reprocessando...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-3 w-3 mr-1.5" />
+                Reprocessar (recomeçar indexação)
+              </>
+            )}
+          </Button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <InfoRow label="Tipo" value={item.mime_type} />
         <InfoRow label="Formato" value={item.format} />
