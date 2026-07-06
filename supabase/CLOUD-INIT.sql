@@ -154,8 +154,9 @@ create or replace function public.sha256_hex(p_data bytea)
 returns text
 language sql
 immutable
+set search_path = public, extensions
 as $$
-    select encode(digest(p_data, 'sha256'), 'hex');
+    select encode(extensions.digest(p_data, 'sha256'), 'hex');
 $$;
 
 comment on function public.sha256_hex(bytea) is
