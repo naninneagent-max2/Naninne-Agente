@@ -1,8 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 "use client";
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { CitationFooter } from "@/app/_components/chat/CitationFooter";
+import { CitationModal } from "@/app/_components/chat/CitationModal";
+import type { Citation } from "@/app/_components/chat/CitationModal";
+import { TemplatesPanel } from "@/app/_components/chat/TemplatesPanel";
+import { NewNoteModal } from "@/app/_components/notes/NewNoteModal";
+import { fetchProjects } from "@/lib/hooks/use-projects";
 import {
   Paperclip,
   Mic,
@@ -40,6 +47,7 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   streaming?: boolean;
+  sources?: Array<{ library_item_id: string; title: string; similarity: number }>;
 };
 
 const QUICK_ACTIONS = [
@@ -65,6 +73,24 @@ export function InicioContent() {
   const [memoryToast, setMemoryToast] = React.useState<string | null>(null);
   const [conversationId, setConversationId] = React.useState<string | null>(null);
   const [recentConvs, setRecentConvs] = React.useState<Array<{ id: string; title: string; last_message_at: string | null; message_count: number }>>([]);
+  const [activeProjectSlug, setActiveProjectSlug] = React.useState<string | null>(null);
+
+  // Persiste active project no localStorage
+  React.useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("naninne:activeProjectSlug");
+      if (stored) setActiveProjectSlug(stored);
+    } catch {}
+  }, []);
+  React.useEffect(() => {
+    try {
+      if (activeProjectSlug) window.localStorage.setItem("naninne:activeProjectSlug", activeProjectSlug);
+      else window.localStorage.removeItem("naninne:activeProjectSlug");
+    } catch {}
+  }, [activeProjectSlug]);
+  const [openCitation, setOpenCitation] = React.useState<Citation | null>(null);
+  const [noteModalOpen, setNoteModalOpen] = React.useState(false);
+  const [noteModalContent, setNoteModalContent] = React.useState<string>("");
 
   // Agent store
   const resetAgents = useAgents((s) => s.reset);
@@ -86,6 +112,22 @@ export function InicioContent() {
       setRecentConvs([]);
     }
   }, [user]);
+
+  // Ctrl/Cmd+N to open new note modal
+  React.useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "n" || e.key === "N")) {
+        // Avoid conflict with browser's "new window"
+        if (e.key === "n" || e.key === "N") {
+          e.preventDefault();
+          setNoteModalContent(input.trim());
+          setNoteModalOpen(true);
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [input]);
 
   React.useEffect(() => {
     if (user) loadRecentConvs();
@@ -132,8 +174,29 @@ export function InicioContent() {
     });
   }, [user]);
 
+  // Carrega active project do localStorage na inicialização
+  React.useEffect(() => {
+    try {
+      const stored = typeof window !== "undefined" ? window.localStorage.getItem("naninne:activeProjectSlug") : null;
+      if (stored) setActiveProjectSlug(stored);
+    } catch {}
+  }, []);
+
+  // Persiste quando muda
+  React.useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        if (activeProjectSlug) window.localStorage.setItem("naninne:activeProjectSlug", activeProjectSlug);
+        else window.localStorage.removeItem("naninne:activeProjectSlug");
+      }
+    } catch {}
+  }, [activeProjectSlug]);
+
   React.useEffect(() => {
     if (user) {
+      fetchProjects()
+        .then((p) => setProjects(p))
+        .catch(() => setProjects([]));
       fetch("/api/projects", { cache: "no-store" })
         .then((r) => r.json())
         .then((data) => setProjects(data.projects ?? []))
@@ -160,11 +223,17 @@ export function InicioContent() {
     const assistantId = `a-${Date.now()}`;
     setMessages((m) => [...m, { id: assistantId, role: "assistant", content: "", streaming: true }]);
 
+    const latestSourcesRef: { current: Array<{ library_item_id: string; title: string; similarity: number }> } = { current: [] };
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMsg], conversation_id: conversationId, project_id: null }),
+        body: JSON.stringify({
+          messages: [...messages, userMsg],
+          conversation_id: conversationId,
+          project_id: activeProjectSlug ? projects.find((p) => p.slug === activeProjectSlug)?.id ?? null : null,
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -211,6 +280,7 @@ export function InicioContent() {
               throw new Error(event.message);
             } else if (event.type === "done") {
               const finalConvId = event.conversation_id ?? conversationId;
+              latestSourcesRef.current = event.sources ?? [];
               setSources(event.sources ?? []);
               setTokens(event.tokens_in ?? 0, event.tokens_out ?? 0, event.cost_usd ?? 0);
               setDocumentId(event.document_id);
@@ -256,7 +326,15 @@ export function InicioContent() {
       }
 
       setMessages((m) =>
-        m.map((msg) => (msg.id === assistantId ? { ...msg, streaming: false } : msg))
+        m.map((msg) =>
+          msg.id === assistantId
+            ? {
+                ...msg,
+                streaming: false,
+                sources: msg.sources ?? latestSourcesRef.current,
+              }
+            : msg
+        )
       );
       setActive(false);
       setStats((s) => ({ ...s, sessions: s.sessions + 1, documents: s.documents + 1 }));
@@ -415,7 +493,15 @@ export function InicioContent() {
                   }
                 >
                   {msg.content ? (
-                    <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                    <>
+                      <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                      {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
+                        <CitationFooter
+                          sources={msg.sources}
+                          onCiteClick={(s) => setOpenCitation(s as Citation)}
+                        />
+                      )}
+                    </>
                   ) : msg.streaming ? (
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -425,6 +511,11 @@ export function InicioContent() {
                 </motion.div>
               ))}
             </AnimatePresence>
+
+            <CitationModal
+              citation={openCitation}
+              onClose={() => setOpenCitation(null)}
+            />
 
             {chatError && (
               <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
@@ -457,6 +548,44 @@ export function InicioContent() {
                 </div>
               </div>
             )}
+
+            {/* Active project + Templates atalhos */}
+            <div className="mt-2 space-y-2">
+              {projects.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Trabalhando em:</span>
+                  {projects.map((p) => {
+                    const active = activeProjectSlug === p.slug;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setActiveProjectSlug(active ? null : p.slug)}
+                        className={
+                          "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs border transition-colors " +
+                          (active
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card text-muted-foreground border-border hover:border-primary/50")
+                        }
+                      >
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: active ? "currentColor" : p.color }}
+                        />
+                        {p.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <TemplatesPanel
+                activeProjectSlug={activeProjectSlug}
+                onPick={(prompt) => {
+                  setInput(prompt);
+                  // Focus textarea manually if ref-attachable; left as no-op
+                }}
+              />
+            </div>
 
             <div className="flex items-end gap-2 pt-2 border-t border-border/40">
               <Button type="button" variant="ghost" size="icon" className="shrink-0" aria-label="Anexar arquivo" disabled>

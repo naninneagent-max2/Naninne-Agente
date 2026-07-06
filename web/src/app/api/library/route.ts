@@ -39,7 +39,7 @@ export async function GET() {
         project: f.project_id,
         size_kb: Math.round((f.file_size_bytes ?? 0) / 1024),
         added_at: f.created_at,
-        tags: [],
+        tags: ((f.metadata as any)?.tags as string[]) ?? [],
         status: f.status,
       };
     });

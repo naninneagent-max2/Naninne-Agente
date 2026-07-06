@@ -96,6 +96,7 @@ export function BibliotecaContent() {
   const [items, setItems] = React.useState<LibraryItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [activeType, setActiveType] = React.useState<typeof TYPE_FILTERS[number]["id"]>("todos");
+  const [activeTag, setActiveTag] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
 
   // Upload state
@@ -123,6 +124,7 @@ export function BibliotecaContent() {
 
   React.useEffect(() => { reload(); }, [reload]);
 
+  const allTags = React.useMemo(() => { const set = new Set<string>(); for (const it of items) { for (const t of (it as any).tags ?? []) set.add(t); } return Array.from(set).sort(); }, [items]);
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     for (const file of Array.from(files)) {
@@ -175,13 +177,14 @@ export function BibliotecaContent() {
 
   const filtered = React.useMemo(() => {
     let list = items;
+    if (activeTag) list = list.filter((i) => (i as any).tags?.includes(activeTag));
     if (activeType !== "todos") list = list.filter((i) => i.type === activeType);
     if (query.trim() && !searchResults) {
       const q = query.toLowerCase();
       list = list.filter((i) => i.name.toLowerCase().includes(q));
     }
     return list;
-  }, [items, activeType, query, searchResults]);
+  }, [items, activeType, query, searchResults, activeTag]);
 
   if (loading) {
     return (
@@ -402,6 +405,29 @@ export function BibliotecaContent() {
                 Nenhum arquivo corresponde ao filtro.
               </div>
             ) : (
+              <>
+                {allTags.length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mr-1">Tags:</span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTag(null)}
+                      className={("px-2 py-0.5 text-xs rounded-full border transition-colors " + (activeTag === null ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:border-primary/50"))}
+                    >
+                      todas
+                    </button>
+                    {allTags.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setActiveTag(t === activeTag ? null : t)}
+                        className={("px-2 py-0.5 text-xs rounded-full border transition-colors " + (activeTag === t ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:border-primary/50"))}
+                      >
+                        #{t}
+                      </button>
+                    ))}
+                  </div>
+                )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filtered.map((item) => {
                   const statusMeta = STATUS_STYLES[item.status] ?? STATUS_STYLES.ready;
@@ -441,11 +467,27 @@ export function BibliotecaContent() {
                             {item.metadata.chunk_count} trechos · {item.metadata.text_length?.toLocaleString("pt-BR")} chars
                           </p>
                         )}
+                        {(item as any).tags && (item as any).tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {((item as any).tags as string[]).slice(0, 4).map((t) => (
+                              <span
+                                key={t}
+                                className="inline-block px-1.5 py-0.5 rounded-full text-[10px] bg-primary-100 text-primary-700"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                            {((item as any).tags as string[]).length > 4 && (
+                              <span className="text-[10px] text-muted-foreground">+{((item as any).tags as string[]).length - 4}</span>
+                            )}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   );
                 })}
               </div>
+              </>
             )}
           </div>
         </>

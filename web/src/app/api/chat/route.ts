@@ -236,7 +236,21 @@ export async function POST(request: Request) {
         const greetingContext = userName
           ? `\n\n[Usuário logado: ${userName}. Cumprimente pelo nome na primeira resposta se for o início da conversa.]`
           : "";
-        const systemPrompt = BASE_SYSTEM + greetingContext + memResult.context + bibResult.context + notasResult.context;
+        // Project context — bias towards the user's active project
+        let projectContext = "";
+        if (projectId) {
+          try {
+            const { data: proj } = await supabase
+              .from("projects")
+              .select("name, slug, description")
+              .eq("id", projectId)
+              .single();
+            if (proj) {
+              projectContext = `\n\n[Projeto ativo: ${proj.name}${proj.description ? ` — ${proj.description}` : ""}. Adapte o tom, terminologia e profundidade para este projeto.]`;
+            }
+          } catch {}
+        }
+        const systemPrompt = BASE_SYSTEM + greetingContext + projectContext + memResult.context + bibResult.context + notasResult.context;
         let fullResponse = "";
         try {
           const result = streamText({
