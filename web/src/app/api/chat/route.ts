@@ -393,6 +393,17 @@ export async function POST(request: Request) {
         // Wait a tiny bit to ensure all DB writes flush before closing stream
         await new Promise((r) => setTimeout(r, 100));
         
+        // Log what we have before sending done
+        try {
+          const { data: check } = await adminClient
+            .from("messages")
+            .select("id")
+            .eq("conversation_id", conversationId);
+          console.log("[chat] DB CHECK messages count:", check?.length, "for conv", conversationId);
+        } catch (e) {
+          console.log("[chat] DB CHECK error:", e);
+        }
+        
         console.log("[chat] about to send done. conversationId=", conversationId, "docId=", documentId);
         send({
           type: "done",
