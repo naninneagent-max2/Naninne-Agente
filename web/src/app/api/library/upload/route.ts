@@ -95,14 +95,15 @@ export async function POST(request: Request) {
     const finalTitle = customTitle ?? file.name.replace(/\.[^.]+$/, "");
 
     // === Step 2: DB insert first (so we have an item ID to attach storage to) ===
-    // Check for duplicate hash
+    // Check for duplicate hash — only block if there's a working version
+    // (a failed upload can be retried with the same file)
     const { data: existingByHash } = await supabase
       .from("library_items")
       .select("id, title, status")
       .eq("user_id", user.id)
       .eq("file_hash_sha256", fileHash)
-      .limit(1)
-      .single();
+      .in("status", ["ready", "processing"])
+      .maybeSingle();
 
     if (existingByHash) {
       return NextResponse.json(
@@ -113,6 +114,15 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
+
+    // If there are ONLY failed uploads with the same hash, clean them up first
+    // so we don't accumulate orphan failed items.
+    await supabase
+      .from("library_items")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("file_hash_sha256", fileHash)
+      .eq("status", "failed");
 
     const { data: item, error: itemErr } = await supabase
       .from("library_items")
