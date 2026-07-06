@@ -295,7 +295,7 @@ export async function POST(request: Request) {
         let documentId: string | null = null;
         if (isLoggedIn && fullResponse.length > 0) {
           try {
-            // Create admin client for inserts (bypasses RLS for user_id setting)
+            // Use admin client for all inserts (bypasses RLS)
             const adminClient = createAdminClient();
             
             try {
@@ -395,7 +395,7 @@ export async function POST(request: Request) {
         
         // Log what we have before sending done
         try {
-          const { data: check } = await adminClient
+          const { data: check } = await createAdminClient()
             .from("messages")
             .select("id")
             .eq("conversation_id", conversationId);
