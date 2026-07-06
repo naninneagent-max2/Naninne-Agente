@@ -297,94 +297,96 @@ export async function POST(request: Request) {
           try {
             // Create admin client for inserts (bypasses RLS for user_id setting)
             const adminClient = createAdminClient();
-            console.log("[chat] admin client env check", {
-              hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-              hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-              urlVal: process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(0, 30),
-            });
-            console.log("[chat] user.id", user?.id?.slice(0, 8));
-            console.log("[chat] conversationId before conv insert", conversationId);
             
-            // Create conversation if needed
-            if (!conversationId) {
-              const { data: conv } = await adminClient
-                .from("conversations")
+            try {
+              // Create conversation if needed
+              if (!conversationId) {
+                const { data: conv, error: convErr } = await adminClient
+                  .from("conversations")
+                  .insert({
+                    user_id: user!.id,
+                    project_id: projectId,
+                    title: lastUserMessage.slice(0, 80).trim() || "Nova conversa",
+                    message_count: 2,
+                    last_message_at: new Date().toISOString(),
+                  })
+                  .select("id")
+                  .single();
+                if (convErr) {
+                  console.error("[chat] conv insert error:", convErr);
+                }
+                if (conv) conversationId = conv.id;
+                console.log("[chat] conv insert", conversationId, "err", convErr?.message);
+              }
+
+              // Save messages FIRST (independent of document)
+              if (conversationId) {
+                const { error: msgErr } = await adminClient.from("messages").insert([
+                  {
+                    user_id: user!.id,
+                    conversation_id: conversationId,
+                    project_id: projectId,
+                    role: "user",
+                    content: lastUserMessage,
+                  },
+                  {
+                    user_id: user!.id,
+                    conversation_id: conversationId,
+                    project_id: projectId,
+                    role: "assistant",
+                    content: fullResponse,
+                    agent_used: "orchestrator",
+                    sources: [...(bibResult.sources ?? []), ...(notasResult.sources ?? [])],
+                    tokens_input: totalTokensIn,
+                    tokens_output: totalTokensOut,
+                    cost_usd: totalCost,
+                    model_used: "claude-sonnet-4-5",
+                  },
+                ]);
+                if (msgErr) {
+                  console.error("[chat] messages insert error FULL:", JSON.stringify(msgErr));
+                } else {
+                  console.log("[chat] messages inserted successfully for", conversationId);
+                  // Update only on success
+                  await adminClient
+                    .from("conversations")
+                    .update({
+                      last_message_at: new Date().toISOString(),
+                      message_count: 2,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", conversationId);
+                }
+              }
+
+              // Save document
+              const { data: doc, error: docErr } = await adminClient
+                .from("generated_documents")
                 .insert({
                   user_id: user!.id,
                   project_id: projectId,
-                  title: lastUserMessage.slice(0, 80).trim() || "Nova conversa",
-                  message_count: 2,
-                  last_message_at: new Date().toISOString(),
+                  title: lastUserMessage.slice(0, 100) || "Conversa",
+                  description: "Resposta do chat Naninne",
+                  format: "markdown",
+                  status: "approved",
+                  content: fullResponse,
+                  metadata: {
+                    tokens_in: totalTokensIn,
+                    tokens_out: totalTokensOut,
+                    cost_usd: totalCost,
+                    sources: [...(bibResult.sources ?? []), ...(notasResult.sources ?? [])],
+                    agent_used: ["memoria", "bibliotecario", "notas", "leitor", "orchestrator", "revisor"],
+                  },
                 })
                 .select("id")
                 .single();
-              if (conv) conversationId = conv.id;
-            }
-
-            // Save document
-            const { data: doc } = await adminClient
-              .from("generated_documents")
-              .insert({
-                user_id: user!.id,
-                project_id: projectId,
-                title: lastUserMessage.slice(0, 100) || "Conversa",
-                description: "Resposta do chat Naninne",
-                format: "markdown",
-                status: "approved",
-                content: fullResponse,
-                metadata: {
-                  tokens_in: totalTokensIn,
-                  tokens_out: totalTokensOut,
-                  cost_usd: totalCost,
-                  sources: [...(bibResult.sources ?? []), ...(notasResult.sources ?? [])],
-                  agent_used: ["memoria", "bibliotecario", "notas", "leitor", "orchestrator", "revisor"],
-                },
-              })
-              .select("id")
-              .single();
-            if (doc) documentId = doc.id;
-
-            // Save messages to the conversation
-            if (conversationId) {
-              const { error: msgErr } = await adminClient.from("messages").insert([
-                {
-                  user_id: user!.id,
-                  conversation_id: conversationId,
-                  project_id: projectId,
-                  role: "user",
-                  content: lastUserMessage,
-                },
-                {
-                  user_id: user!.id,
-                  conversation_id: conversationId,
-                  project_id: projectId,
-                  role: "assistant",
-                  content: fullResponse,
-                  agent_used: "orchestrator",
-                  sources: [...(bibResult.sources ?? []), ...(notasResult.sources ?? [])],
-                  tokens_input: totalTokensIn,
-                  tokens_output: totalTokensOut,
-                  cost_usd: totalCost,
-                  model_used: "claude-sonnet-4-5",
-                },
-              ]);
-              if (msgErr) {
-                console.error("[chat] messages insert error:", msgErr);
-              } else {
-                console.log("[chat] messages inserted successfully for", conversationId);
-              }
-              // Update conversation last_message_at
-              await adminClient
-                .from("conversations")
-                .update({
-                  last_message_at: new Date().toISOString(),
-                  message_count: 2,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq("id", conversationId);
+              if (docErr) console.error("[chat] doc insert error:", docErr);
+              if (doc) documentId = doc.id;
+            } catch (e) {
+              console.error("[chat] save catch error:", e);
             }
           } catch (e) {
-            console.error("[chat] save error:", e);
+            console.error("[chat] outer save error:", e);
           }
         }
 
