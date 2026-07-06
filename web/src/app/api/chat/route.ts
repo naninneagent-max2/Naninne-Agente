@@ -319,47 +319,9 @@ export async function POST(request: Request) {
                 console.log("[chat] conv insert", conversationId, "err", convErr?.message);
               }
 
-              // Save messages FIRST (independent of document)
-              if (conversationId) {
-                const { error: msgErr } = await adminClient.from("messages").insert([
-                  {
-                    user_id: user!.id,
-                    conversation_id: conversationId,
-                    project_id: projectId,
-                    role: "user",
-                    content: lastUserMessage,
-                  },
-                  {
-                    user_id: user!.id,
-                    conversation_id: conversationId,
-                    project_id: projectId,
-                    role: "assistant",
-                    content: fullResponse,
-                    agent_used: "orchestrator",
-                    sources: [...(bibResult.sources ?? []), ...(notasResult.sources ?? [])],
-                    tokens_input: totalTokensIn,
-                    tokens_output: totalTokensOut,
-                    cost_usd: totalCost,
-                    model_used: "claude-sonnet-4-5",
-                  },
-                ]);
-                if (msgErr) {
-                  console.error("[chat] messages insert error FULL:", JSON.stringify(msgErr));
-                } else {
-                  console.log("[chat] messages inserted successfully for", conversationId);
-                  // Update only on success
-                  await adminClient
-                    .from("conversations")
-                    .update({
-                      last_message_at: new Date().toISOString(),
-                      message_count: 2,
-                      updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", conversationId);
-                }
-              }
-
               // Save document
+              // (messages são salvas pelo cliente via /api/conversations/[id]/messages
+              //  — evita race condition do insert dentro do SSE stream na Vercel)
               const { data: doc, error: docErr } = await adminClient
                 .from("generated_documents")
                 .insert({
@@ -390,21 +352,7 @@ export async function POST(request: Request) {
           }
         }
 
-        // Wait a tiny bit to ensure all DB writes flush before closing stream
-        await new Promise((r) => setTimeout(r, 100));
-        
-        // Log what we have before sending done
-        try {
-          const { data: check } = await createAdminClient()
-            .from("messages")
-            .select("id")
-            .eq("conversation_id", conversationId);
-          console.log("[chat] DB CHECK messages count:", check?.length, "for conv", conversationId);
-        } catch (e) {
-          console.log("[chat] DB CHECK error:", e);
-        }
-        
-        console.log("[chat] about to send done. conversationId=", conversationId, "docId=", documentId);
+        console.log("[chat] sending done. conversationId=", conversationId, "docId=", documentId);
         send({
           type: "done",
           document_id: documentId,
