@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ============================================================
+ * Naninne Design System — Tokens
+ * Reference: /workspace/docs/design-system.md (v1.0)
+ * All visual values must come from this file (or tailwind.config.ts).
+ * NEVER hardcode colors / spacing / typography in components.
+ * ============================================================
+ */
+
+@layer base {
+  :root {
+    /* ---------- Primary (Indigo) ---------- */
+    --primary: #5B5FE9;
+    --primary-50: #EEF0FE;
+    --primary-100: #DCE0FD;
+    --primary-200: #B9C0FB;
+    --primary-300: #96A1F8;
+    --primary-400: #7381F4;
+    --primary-500: #5B5FE9;
+    --primary-600: #4A4ED4;
+    --primary-700: #3A3DAD;
+    --primary-800: #2C2F86;
+    --primary-900: #1E205E;
+    --primary-foreground: #ffffff;
+
+    /* ---------- Neutral (off-white scale) ---------- */
+    --neutral-0: #ffffff;
+    --neutral-50: #fafaf7;
+    --neutral-100: #f4f3ef;
+    --neutral-200: #e8e6e0;
+    --neutral-300: #d6d3cb;
+    --neutral-400: #a8a59c;
+    --neutral-500: #7c7970;
+    --neutral-600: #56544d;
+    --neutral-700: #3a3935;
+    --neutral-800: #232220;
+    --neutral-900: #14130f;
+
+    /* ---------- Dark mode (used when .dark is set) ---------- */
+    --dark-50: #0f1014;
+    --dark-100: #1a1b23;
+    --dark-200: #26272f;
+    --dark-300: #363740;
+    --dark-400: #4a4c57;
+    --dark-500: #9a9da8;
+    --dark-600: #e0e2e8;
+    --dark-700: #f1f2f6;
+
+    /* ---------- Semantic — light ---------- */
+    --success: #10b981;
+    --success-bg: #ecfdf3;
+    --success-border: #abefc6;
+    --success-text: #067647;
+
+    --warning: #f59e0b;
+    --warning-bg: #fffaeb;
+    --warning-border: #fedf89;
+    --warning-text: #b54708;
+
+    --error: #ef4444;
+    --error-bg: #fef3f2;
+    --error-border: #fecdca;
+    --error-text: #b42318;
+
+    --info: #3b82f6;
+    --info-bg: #eff8ff;
+    --info-border: #b2ddff;
+    --info-text: #175cd3;
+
+    /* ---------- Project palettes ---------- */
+    /* ✍️ Escrita (azul) */
+    --writing-100: #dbeafe;
+    --writing-300: #60a5fa;
+    --writing-500: #3b82f6;
+    --writing-700: #1d4ed8;
+    --writing-900: #1e3a8a;
+
+    /* 🎬 Audiovisual (laranja) */
+    --av-100: #ffedd5;
+    --av-300: #fdba74;
+    --av-500: #f97316;
+    --av-700: #c2410c;
+    --av-900: #7c2d12;
+
+    /* 📊 Mercado (verde) */
+    --mkt-100: #d1fae5;
+    --mkt-300: #6ee7b7;
+    --mkt-500: #10b981;
+    --mkt-700: #047857;
+    --mkt-900: #064e3b;
+
+    /* 🛠️ Tech (cinza-azulado) */
+    --tech-100: #f1f5f9;
+    --tech-300: #cbd5e1;
+    --tech-500: #64748b;
+    --tech-700: #334155;
+    --tech-900: #0f172a;
+
+    /* ---------- Layout dimensions ---------- */
+    --topbar-h: 64px;
+    --sidebar-w: 240px;
+    --right-w: 320px;
+
+    /* ---------- Surfaces (shadcn/ui base) ---------- */
+    --background: var(--neutral-50);
+    --foreground: var(--neutral-900);
+    --card: var(--neutral-0);
+    --card-foreground: var(--neutral-900);
+    --popover: var(--neutral-0);
+    --popover-foreground: var(--neutral-900);
+    --muted: var(--neutral-100);
+    --muted-foreground: var(--neutral-600);
+    --accent: var(--neutral-100);
+    --accent-foreground: var(--neutral-900);
+    --border: var(--neutral-200);
+    --input: var(--neutral-300);
+    --ring: var(--primary-500);
+    --destructive: var(--error);
+    --destructive-foreground: #ffffff;
+  }
+
+  .dark {
+    /* ---------- Dark surfaces (re-curated, not a simple inversion) ---------- */
+    --background: var(--dark-50);
+    --foreground: var(--dark-600);
+    --card: var(--dark-100);
+    --card-foreground: var(--dark-700);
+    --popover: var(--dark-100);
+    --popover-foreground: var(--dark-700);
+    --muted: var(--dark-200);
+    --muted-foreground: var(--dark-500);
+    --accent: var(--dark-200);
+    --accent-foreground: var(--dark-700);
+    --border: var(--dark-300);
+    --input: var(--dark-400);
+    --ring: var(--primary-400);
+    --destructive: var(--error);
+    --destructive-foreground: var(--dark-700);
+
+    /* Semantic dark versions */
+    --success-bg: #0d2a1f;
+    --success-border: #146c43;
+    --success-text: #6ce9a6;
+
+    --warning-bg: #2e1f06;
+    --warning-border: #92580a;
+    --warning-text: #fdb022;
+
+    --error-bg: #2a0e0d;
+    --error-border: #912018;
+    --error-text: #fda29b;
+
+    --info-bg: #0c1f3a;
+    --info-border: #1b4d8c;
+    --info-text: #84caff;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-neutral-200;
+  }
+  html,
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  /* Focus visibility — keyboard only */
+  :focus-visible {
+    outline: 2px solid var(--primary-500);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+  .dark :focus-visible {
+    outline-color: var(--primary-400);
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--neutral-300);
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: var(--neutral-400);
+  }
+}

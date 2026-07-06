@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arquitetura do Orquestrador Naninne — LangGraph 1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --cream:        #f7f5f0;
+    --paper:        #ffffff;
+    --ink:          #14171e;
+    --ink-soft:     #3a4256;
+    --ink-mute:     #7c7a72;
+    --line:         #e9e3d6;
+    --line-soft:    #f0eadf;
+    --primary:      #5B5FE9;   /* Naninne indigo */
+    --primary-soft: #eef0fd;
+    --accent:       #c97b3f;   /* Report orange */
+    --accent-soft:  #f5e8d8;
+    --teal:         #2f6f5e;
+    --teal-soft:    #e3eeea;
+    --c-orch:       #5B5FE9;
+    --c-revisor:    #DC2626;
+    --c-memoria:    #475569;
+    --c-io:         #16A34A;
+    --c-vision:     #EA580C;
+    --c-search:     #0891B2;
+    --c-mec:        #7C3AED;
+    --c-sintese:    #DB2777;
+    --c-control:    #DC2626;
+    --shadow-sm:    0 2px 8px rgba(0,0,0,0.04);
+    --shadow-md:    0 4px 16px -2px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--cream); color: var(--ink); }
+  body {
+    font-family: 'Outfit', sans-serif;
+    line-height: 1.55;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Page background — subtle corner gradients */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+    background:
+      radial-gradient(ellipse 800px 500px at 0% 0%, rgba(91,95,233,0.04), transparent 60%),
+      radial-gradient(ellipse 600px 400px at 100% 100%, rgba(201,123,63,0.04), transparent 60%);
+  }
+
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+  .narrow    { max-width: 880px;  margin: 0 auto; padding: 0 28px; }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 96px 0 56px;
+    text-align: left;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--primary); margin-bottom: 18px; font-weight: 500;
+  }
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 56px;
+    line-height: 1.05;
+    letter-spacing: -0.012em;
+    color: var(--ink);
+    margin-bottom: 18px;
+  }
+  h1 em { font-style: italic; color: var(--primary); }
+  .lede {
+    font-size: 19px; line-height: 1.55; color: var(--ink-soft);
+    max-width: 720px; font-weight: 400;
+  }
+  .meta-row {
+    display: flex; gap: 28px; flex-wrap: wrap;
+    margin-top: 32px; padding-top: 28px;
+    border-top: 1px solid var(--line);
+    font-size: 13px; color: var(--ink-mute);
+  }
+  .meta-row span strong {
+    display: block; font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--ink); margin-bottom: 2px; font-weight: 500;
+  }
+
+  /* ── Sections ── */
+  section { padding: 64px 0; }
+  section + section { border-top: 1px solid var(--line); }
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 36px; line-height: 1.15;
+    letter-spacing: -0.008em;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+  h2 .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; color: var(--accent); margin-right: 14px;
+    letter-spacing: 0.06em; vertical-align: 4px;
+  }
+  .section-desc {
+    color: var(--ink-soft); font-size: 16px; max-width: 720px;
+    margin-bottom: 40px; line-height: 1.6;
+  }
+
+  h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 20px; font-weight: 600;
+    color: var(--ink); margin: 32px 0 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h3 svg { color: var(--primary); }
+  h4 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px; font-weight: 600;
+    color: var(--ink); margin: 24px 0 10px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card-soft {
+    background: var(--line-soft);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 24px;
+  }
+
+  /* ── Agent grid (10 agents + 1 revisor) ── */
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .agent-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .agent-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .agent-card::before {
+    content: ""; position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 14px 14px 0 0;
+    background: var(--agent-color, var(--primary));
+  }
+  .agent-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 6px;
+  }
+  .agent-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--agent-color, var(--primary)) 12%, transparent);
+    color: var(--agent-color, var(--primary));
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .agent-name {
+    font-weight: 600; font-size: 15px; color: var(--ink);
+  }
+  .agent-role {
+    font-size: 12px; color: var(--ink-mute);
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-top: 1px;
+  }
+  .agent-desc {
+    font-size: 13px; color: var(--ink-soft);
+    margin: 10px 0 12px; line-height: 1.5;
+  }
+  .agent-model {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px; color: var(--ink-mute);
+    padding: 5px 9px; background: var(--line-soft);
+    border-radius: 6px; display: inline-block;
+  }
+  .agent-tools {
+    margin-top: 10px;
+    display: flex; flex-wrap: wrap; gap: 5px;
+  }
+  .tool-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px; padding: 2px 7px;
+    background: var(--line-soft); color: var(--ink-soft);
+    border-radius: 5px;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    margin-bottom: 24px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px; color: var(--ink-soft);
+    padding: 5px 10px 5px 8px;
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 999px;
+  }
+  .legend-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+  }
+
+  /* ── Mermaid ── */
+  .mermaid-wrap {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 36px 24px;
+    box-shadow: var(--shadow-sm);
+    overflow-x: auto;
+  }
+  .mermaid { font-family: 'Outfit', sans-serif !important; }
+  .mermaid .nodeLabel { font-family: 'Outfit', sans-serif !important; font-size: 12.5px !important; }
+
+  /* ── Cascade diagram ── */
+  .cascade {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .cascade-level {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 22px;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+    align-items: center;
+    position: relative;
+  }
+  .cascade-level::after {
+    content: ""; position: absolute;
+    left: 110px; bottom: -16px;
+    width: 2px; height: 16px;
+    background: linear-gradient(180deg, var(--primary), transparent);
+  }
+  .cascade-level:last-child::after { display: none; }
+  .cascade-tier {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px; color: var(--ink-mute);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .cascade-tier strong {
+    display: block; font-size: 14px; color: var(--ink);
+    font-weight: 600; text-transform: none; letter-spacing: 0;
+    margin-bottom: 4px; font-family: 'Outfit', sans-serif;
+  }
+  .cascade-detail { color: var(--ink-soft); font-size: 14px; }
+  .cascade-detail code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px; padding: 1px 6px;
+    background: var(--line-soft); border-radius: 4px;
+    color: var(--ink);
+  }
+
+  /* ── Latency bench ── */
+  .latency-table {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .latency-row {
+    display: grid;
+    grid-template-columns: 60px 1.6fr 1fr 1fr 0.8fr;
+    gap: 20px; align-items: center;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 14px;
+  }
+  .latency-row:last-child { border-bottom: none; }
+  .latency-row.header {
+    background: var(--line-soft);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; text-transform: uppercase;
+    color: var(--ink-mute); letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+  .latency-row:not(.header) {
+    transition: background 0.15s;
+  }
+  .latency-row:not(.header):hover { background: var(--primary-soft); }
+  .case-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 600;
+    color: var(--primary);
+  }
+  .case-name { color: var(--ink); font-weight: 500; }
+  .lat-bar {
+    height: 8px; background: var(--line-soft);
+    border-radius: 4px; overflow: hidden;
+    position: relative;
+    margin-top: 4px;
+  }
+  .lat-bar-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--teal));
+  }
+  .lat-p50 { color: var(--ink); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .lat-p95 { color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .lat-cost { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
+
+  /* ── Use case parallel grid ── */
+  .usecase-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 800px) { .usecase-grid { grid-template-columns: 1fr; } }
+  .usecase-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 24px;
+  }
+  .usecase-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 14px;
+  }
+  .usecase-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 600;
+    color: var(--primary); letter-spacing: 0.04em;
+  }
+  .usecase-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--ink-mute);
+  }
+  .usecase-title {
+    font-weight: 600; font-size: 15.5px;
+    color: var(--ink); margin-bottom: 4px;
+  }
+  .usecase-sub {
+    font-size: 12.5px; color: var(--ink-mute); margin-bottom: 14px;
+  }
+  .usecase-flow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--ink-soft);
+    background: var(--line-soft);
+    padding: 12px 14px; border-radius: 8px;
+    line-height: 1.6;
+  }
+  .usecase-flow .parallel {
+    color: var(--c-io); font-weight: 600;
+  }
+  .usecase-flow .seq {
+    color: var(--ink-mute);
+  }
+  .usecase-flow .hitl {
+    color: var(--c-control); font-weight: 600;
+  }
+
+  /* ── Two-column layout for some sections ── */
+  .two-col {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── Schema block ── */
+  .schema-block {
+    background: var(--ink);
+    color: #d4d4d8;
+    border-radius: 10px;
+    padding: 18px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px; line-height: 1.6;
+    overflow-x: auto;
+  }
+  .schema-block .k { color: #f0abfc; }
+  .schema-block .s { color: #a5f3fc; }
+  .schema-block .c { color: #71717a; }
+  .schema-block .n { color: #fbbf24; }
+
+  /* ── Footer ── */
+  footer {
+    padding: 48px 0 64px;
+    text-align: center;
+    color: var(--ink-mute);
+    font-size: 13px;
+    border-top: 1px solid var(--line);
+    margin-top: 32px;
+  }
+  footer .brand {
+    font-family: 'DM Serif Display', serif;
+    color: var(--ink); font-size: 18px;
+    margin-bottom: 4px;
+  }
+
+  /* ── Decorative numbering ── */
+  .section-num {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    font-size: 13px;
+    margin-right: 8px;
+    vertical-align: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="eyebrow">Naninne · Arquitetura do Orquestrador · v1.0 · 6 jul 2026</div>
+    <h1>Um time de <em>10 agentes</em> que trabalha para um único cérebro: o seu.</h1>
+    <p class="lede">
+      Como o LangGraph 1.0 coordena o Orquestrador, os 9 especialistas e o Revisor — com persistência no Postgres, HITL nativo, cascata de modelos (Qwen3 8B → Hermes 4.3 / Claude Sonnet 4 / Gemini 2.5 Pro) e observabilidade ponta-a-ponta no LangSmith.
+    </p>
+    <div class="meta-row">
+      <span><strong>Framework</strong>LangGraph 1.0 GA</span>
+      <span><strong>Persistência</strong>PostgresSaver (Async) + Mem0</span>
+      <span><strong>Latência alvo</strong>1–4 min por caso de uso</span>
+      <span><strong>Custo médio</strong>$0.13 a $4.10 por operação</span>
+    </div>
+  </header>
+
+  <!-- 1. POR QUE LANGGRAPH -->
+  <section>
+    <h2><span class="num">01</span> Por que LangGraph 1.0 e não outra coisa</h2>
+    <p class="section-desc">
+      Em julho de 2026, o estado da arte consolidou: LangGraph é o padrão de produção, OpenAI Swarm foi arquivado em março de 2025, Microsoft AutoGen entrou em modo manutenção. Cinco requisitos não-negociáveis eliminam três alternativas e apontam LangGraph como única escolha séria.
+    </p>
+
+    <div class="two-col">
+      <div class="card-soft">
+        <h3 style="margin-top:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>5 requisitos, 1 framework</h3>
+        <p style="font-size:14px; color:var(--ink-soft);">
+          1. Persistência confiável de estado (Postgres nativo)<br>
+          2. Human-in-the-loop via <code style="font-family:'JetBrains Mono',monospace; font-size:12px;">interrupt()</code><br>
+          3. Paralelismo nativo entre agentes (Send API)<br>
+          4. Observabilidade first-class (LangSmith)<br>
+          5. Erro recovery declarativo (RetryPolicy + circuit breaker)
+        </p>
+      </div>
+      <div class="card-soft">
+        <h3 style="margin-top:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M12 8v4l3 2"/></svg>Posição de mercado (2026)</h3>
+        <p style="font-size:14px; color:var(--ink-soft);">
+          <strong style="color:var(--ink)">38%</strong> dos deployments de produção multi-agente usam LangGraph<br>
+          <strong style="color:var(--ink)">38,8M</strong> downloads/mês no PyPI (~30× o AutoGen)<br>
+          <strong style="color:var(--ink)">74%</strong> de task completion rate em benchmark head-to-head<br>
+          <strong style="color:var(--ink)">41/47</strong> falhas de tool-call recuperadas via fallback nodes
+        </p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:36px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg> Comparação 2026</h3>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+        <thead>
+          <tr style="background:var(--line-soft);">
+            <th style="text-align:left; padding:12px 18px; font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-mute);">Framework</th>
+            <th style="text-align:left; padding:12px 18px; font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-mute);">Status 2026</th>
+            <th style="text-align:center; padding:12px 18px; font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-mute);">Persistência</th>
+            <th style="text-align:center; padding:12px 18px; font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-mute);">HITL nativo</th>
+            <th style="text-align:center; padding:12px 18px; font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-mute);">Paralelismo</th>
+            <th style="text-align:center; padding:12px 18px; font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-mute);">Veredito</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="background:var(--primary-soft);">
+            <td style="padding:12px 18px; font-weight:600;">LangGraph 1.0</td>
+            <td style="padding:12px 18px; color:var(--teal); font-weight:500;">✅ GA Q1 2026</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--teal); font-weight:600;">✓</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--teal); font-weight:600;">✓</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--teal); font-weight:600;">✓</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--primary); font-weight:700;">ESCOLHIDO</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 18px;">CrewAI 1.14.3</td>
+            <td style="padding:12px 18px;">✅ Ativo</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--c-revisor);">—</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--c-revisor);">—</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--c-revisor);">—</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--ink-mute);">descartado</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 18px;">Microsoft AutoGen</td>
+            <td style="padding:12px 18px; color:var(--accent);">🟡 Manutenção (sucessor: MAF 1.0)</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--accent);">parcial</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--accent);">parcial</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--teal); font-weight:600;">✓</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--ink-mute);">risco</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 18px; color:var(--ink-mute);">OpenAI Swarm</td>
+            <td style="padding:12px 18px; color:var(--c-revisor); font-weight:500;">❌ Arquivado Mar/2025</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--c-revisor);">—</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--c-revisor);">—</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--c-revisor);">—</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--ink-mute);">descontinuado</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 18px;">OpenAI Agents SDK 0.17.3</td>
+            <td style="padding:12px 18px;">✅ Ativo</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--accent);">parcial</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--teal); font-weight:600;">✓</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--accent);">parcial</td>
+            <td style="text-align:center; padding:12px 18px; color:var(--ink-mute);">lock-in OpenAI</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 2. STATE MACHINE -->
+  <section>
+    <h2><span class="num">02</span> O grafo principal</h2>
+    <p class="section-desc">
+      Um StateGraph LangGraph com 1 classificador (CascadeRouter), 9 sub-grafos paralelos (Send API), 1 nó obrigatório de aprovação humana, e 1 nó terminal de revisão. Toda transição persiste snapshot no PostgresSaver.
+    </p>
+
+    <div class="mermaid-wrap">
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> EntryPoint
+
+    EntryPoint: EntryPoint
+    MemoryRead: MemoryRead (Mem0)
+    CascadeRouter: CascadeRouter (Qwen3 8B)
+    PlanGen: PlanGen (Claude Sonnet 4)
+    HumanApproval: HumanApproval (interrupt)
+    Consolidator: Consolidator (Claude Sonnet 4)
+    Reviewer: Reviewer (Claude Sonnet 4)
+
+    EntryPoint --> MemoryRead
+    MemoryRead --> CascadeRouter
+    CascadeRouter --> PlanGen: complex / simple
+    CascadeRouter --> HumanApproval: ambiguous (clarifica)
+    PlanGen --> HumanApproval: plano gerado
+    HumanApproval --> PlanGen: pediu ajuste
+    HumanApproval --> ParallelFanout: aprovado por Robert
+
+    state ParallelFanout {
+        Bib: Bibliotecário
+        Lei: Leitor Docs
+        Vis: Visionário
+        Tra: Transcritor
+        Pes: Pesquisador
+        Ana: Analista
+        Org: Organizador
+        Red: Redator
+    }
+
+    ParallelFanout --> Consolidator
+    Consolidator --> Reviewer
+    Reviewer --> [*]: OK
+    Reviewer --> PlanGen: precisa reescrita
+    Reviewer --> HumanApproval: precisa decisão
+</pre>
+    </div>
+  </section>
+
+  <!-- 3. OS 10 AGENTES -->
+  <section>
+    <h2><span class="num">03</span> Os 10 agentes</h2>
+    <p class="section-desc">
+      Cada agente é um nó LangGraph. A cor da faixa superior indica a categoria. Tool schemas completos estão no documento técnico (arquitetura-orquestrador.md, §4).
+    </p>
+
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--c-orch)"></span>Raciocínio</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--c-io)"></span>IO / Extração</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--c-vision)"></span>Visão / Multimodal</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--c-search)"></span>Pesquisa externa</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--c-mec)"></span>Mecânico / Código</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--c-sintese)"></span>Síntese</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--c-memoria)"></span>Memória</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--c-control)"></span>Controle / HITL</div>
+    </div>
+
+    <div class="agent-grid">
+
+      <div class="agent-card" style="--agent-color:var(--c-orch)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Orquestrador</div>
+            <div class="agent-role">gerente · raciocínio</div>
+          </div>
+        </div>
+        <p class="agent-desc">Interpreta, planeja, distribui tarefas, consolida outputs. Único que fala com Robert.</p>
+        <span class="agent-model">Claude Sonnet 4</span>
+        <div class="agent-tools">
+          <span class="tool-chip">generate_execution_plan</span>
+          <span class="tool-chip">consolidate_outputs</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-memoria)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Memória</div>
+            <div class="agent-role">camada Mem0</div>
+          </div>
+        </div>
+        <p class="agent-desc">Lembra de Robert: preferências, projetos, estilo, feedbacks anteriores. Cross-thread.</p>
+        <span class="agent-model">Mem0 + pgvector</span>
+        <div class="agent-tools">
+          <span class="tool-chip">mem0_search</span>
+          <span class="tool-chip">mem0_add</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-io)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Bibliotecário</div>
+            <div class="agent-role">busca semântica</div>
+          </div>
+        </div>
+        <p class="agent-desc">Vasculha o índice pgvector da Biblioteca Universal. Retorna chunks + referências.</p>
+        <span class="agent-model">Hermes 4.3 36B</span>
+        <div class="agent-tools">
+          <span class="tool-chip">library_search</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-io)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Leitor de Documentos</div>
+            <div class="agent-role">extração de texto</div>
+          </div>
+        </div>
+        <p class="agent-desc">Abre PDFs, Excel, Word, e-mails. Mantém tabelas, segmenta por seções.</p>
+        <span class="agent-model">Llama 3.3 70B + Unstructured.io</span>
+        <div class="agent-tools">
+          <span class="tool-chip">extract_document</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-vision)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Visionário</div>
+            <div class="agent-role">visão multimodal</div>
+          </div>
+        </div>
+        <p class="agent-desc">Lê imagens, fotos de recibos, PDFs escaneados, frames de vídeo. OCR semântico.</p>
+        <span class="agent-model">Claude Sonnet Vision</span>
+        <div class="agent-tools">
+          <span class="tool-chip">analyze_image</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-io)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Transcritor</div>
+            <div class="agent-role">áudio / vídeo</div>
+          </div>
+        </div>
+        <p class="agent-desc">Ouve e assiste. Diariza, marca timestamps, resume. Busca por trecho na transcrição.</p>
+        <span class="agent-model">Whisper Large v3 + Claude</span>
+        <div class="agent-tools">
+          <span class="tool-chip">transcribe_media</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-search)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Pesquisador</div>
+            <div class="agent-role">busca web</div>
+          </div>
+        </div>
+        <p class="agent-desc">Traz dados atualizados da internet com fontes verificáveis. Tavily + Brave fallback.</p>
+        <span class="agent-model">Hermes 4.3 + Tavily</span>
+        <div class="agent-tools">
+          <span class="tool-chip">web_search</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-mec)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Analista de Dados</div>
+            <div class="agent-role">código / dados</div>
+          </div>
+        </div>
+        <p class="agent-desc">Lê planilhas, calcula, gera gráficos Python (pandas/matplotlib) e exporta artefatos.</p>
+        <span class="agent-model">Devstral 2 (Mistral)</span>
+        <div class="agent-tools">
+          <span class="tool-chip">analyze_dataset</span>
+          <span class="tool-chip">plot_chart</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-mec)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Organizador</div>
+            <div class="agent-role">background · mecânico</div>
+          </div>
+        </div>
+        <p class="agent-desc">Cataloga, etiqueta, renomeia, classifica. Roda em background sem bloquear o Robert.</p>
+        <span class="agent-model">Hermes 4.3 (mecânico)</span>
+        <div class="agent-tools">
+          <span class="tool-chip">tag_and_index</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-sintese)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Redator</div>
+            <div class="agent-role">síntese final</div>
+          </div>
+        </div>
+        <p class="agent-desc">Produz o documento final: capítulos, relatórios, apresentações. Segue template e tom.</p>
+        <span class="agent-model">Claude Sonnet 4</span>
+        <div class="agent-tools">
+          <span class="tool-chip">write_document</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-revisor)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">Revisor</div>
+            <div class="agent-role">auditoria final</div>
+          </div>
+        </div>
+        <p class="agent-desc">Última checagem antes de chegar a Robert. Verifica citação, tom, fontes, alucinação.</p>
+        <span class="agent-model">Claude Sonnet 4</span>
+        <div class="agent-tools">
+          <span class="tool-chip">audit_deliverable</span>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color:var(--c-control)">
+        <div class="agent-head">
+          <div class="agent-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div>
+            <div class="agent-name">HumanApproval</div>
+            <div class="agent-role">controle · HITL</div>
+          </div>
+        </div>
+        <p class="agent-desc">Pausa o grafo via <code style="font-family:'JetBrains Mono',monospace; font-size:11.5px;">interrupt()</code>. Espera Robert aprovar, ajustar ou rejeitar.</p>
+        <span class="agent-model">interrupt() + Command(resume=)</span>
+        <div class="agent-tools">
+          <span class="tool-chip">approve</span>
+          <span class="tool-chip">edit</span>
+          <span class="tool-chip">reject</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 4. CASCATA DE MODELOS -->
+  <section>
+    <h2><span class="num">04</span> Cascata de modelos</h2>
+    <p class="section-desc">
+      Toda mensagem passa pelo Qwen3 8B (custo ~$0.0001) antes de chegar a um modelo caro. Critério: SIMPLE → Hermes 4.3 / Devstral 2 (baratos), COMPLEX → Claude Sonnet 4, contexto > 200k tokens → Gemini 2.5 Pro.
+    </p>
+
+    <div class="cascade">
+      <div class="cascade-level">
+        <div class="cascade-tier">
+          <strong>Tier 0 · Router</strong>
+          SEMPRE RODA
+        </div>
+        <div class="cascade-detail">
+          <code>Qwen3 8B</code> classifica em <code>simple</code> / <code>complex</code> / <code>ambiguous</code>. Latência ~200ms. Custo ~$0.0001. Saída alimenta o <code>PlanGen</code>.
+        </div>
+      </div>
+      <div class="cascade-level">
+        <div class="cascade-tier">
+          <strong>Tier 1 · Mecânico</strong>
+          SIMPLE
+        </div>
+        <div class="cascade-detail">
+          <code>Hermes 4.3 36B</code> (self-hosted) — tarefas mecânicas: transcrever, etiquetar, extrair CSV, busca exata. <code>Devstral 2</code> (Mistral) — código/pandas. Custo $0.001-0.10/call.
+        </div>
+      </div>
+      <div class="cascade-level">
+        <div class="cascade-tier">
+          <strong>Tier 2 · Raciocínio</strong>
+          COMPLEX
+        </div>
+        <div class="cascade-detail">
+          <code>Claude Sonnet 4</code> — geração de plano, escrita final, decisões críticas. Latência ~2-3s, TTFB 200ms. Custo $0.10-0.50/call.
+        </div>
+      </div>
+      <div class="cascade-level">
+        <div class="cascade-tier">
+          <strong>Tier 3 · Contexto gigante</strong>
+          > 200K TOKENS
+        </div>
+        <div class="cascade-detail">
+          <code>Gemini 2.5 Pro</code> — janela de 2M tokens. Usado no caso 5.1 (lê <em>O Príncipe</em> inteiro + 200 páginas suas). Custo $0.30/input 2M.
+        </div>
+      </div>
+      <div class="cascade-level">
+        <div class="cascade-tier">
+          <strong>Fallback</strong>
+          EM CASCATA
+        </div>
+        <div class="cascade-detail">
+          Claude Sonnet 4 → timeout/5xx → <code>Gemini 2.5 Pro</code> → timeout → <code>Hermes 4.3</code> → erro 5xx → ReportError a Robert. Circuit breaker pausa provedor com 5 falhas/60s.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. PARALELIZAÇÃO POR CASO DE USO -->
+  <section>
+    <h2><span class="num">05</span> Paralelização nos 4 casos de uso</h2>
+    <p class="section-desc">
+      Regra: paralelize quando passos não compartilham estado e a ação não é irreversível. Sequencialize quando há HITL obrigatório ou dependência de output. O caso 5.4 (Supabase) é o mais conservador por segurança.
+    </p>
+
+    <div class="usecase-grid">
+      <div class="usecase-card">
+        <div class="usecase-head">
+          <span class="usecase-id">5.1 · LITERÁRIO</span>
+          <span class="usecase-time">1:06 P50 · 2:18 P95</span>
+        </div>
+        <div class="usecase-title">O Príncipe — capítulo baseado em anotações</div>
+        <div class="usecase-sub">4 grupos paralelos · Custo $1.16</div>
+        <pre class="usecase-flow"><span class="seq">▸ MemoryRead</span>
+<span class="parallel">╔═ Group 1 (paralelo) ══╗
+║ Bibliotecário          ║
+║ Leitor Docs            ║
+║ Visionário             ║
+╚════════════════════════╝
+<span class="seq">▸ Gemini 2.5 Pro (O Príncipe)</span>
+<span class="parallel">╔═ Group 2 (paralelo) ══╗
+║ PlanGen-propõe         ║
+║ <span class="hitl">HumanApproval</span>        ║
+╚════════════════════════╝
+<span class="seq">▸ Redator → Revisor</span></pre>
+      </div>
+
+      <div class="usecase-card">
+        <div class="usecase-head">
+          <span class="usecase-id">5.2 · AUDIOVISUAL</span>
+          <span class="usecase-time">1:48 P50 · 2:43 P95</span>
+        </div>
+        <div class="usecase-title">O INVISÍVEL — 12 cenas com prompt Midjourney</div>
+        <div class="usecase-sub">2 grupos paralelos grandes · Custo $2.55 (base)</div>
+        <pre class="usecase-flow"><span class="parallel">╔═ Group 1 (paralelo) ══╗
+║ Leitor Docs (38 pgs)  ║
+║ MemoryRead            ║
+╚════════════════════════╝
+<span class="parallel">╔═ Group 2 (paralelo) ══╗
+║ Visionário (moodboard)║
+║ Bibliotecário         ║
+║ Analista              ║
+╚════════════════════════╝
+<span class="seq">▸ Redator (12 cenas)</span>
+<span class="seq">▸ Revisor</span></pre>
+      </div>
+
+      <div class="usecase-card">
+        <div class="usecase-head">
+          <span class="usecase-id">5.3 · CORPORATIVO</span>
+          <span class="usecase-time">1:29 P50 · 2:58 P95</span>
+        </div>
+        <div class="usecase-title">RC Agropecuária — 10 slides, 8 gráficos</div>
+        <div class="usecase-sub">2 grupos paralelos · Custo $0.59</div>
+        <pre class="usecase-flow"><span class="parallel">╔═ Group 1 (paralelo) ══╗
+║ Pesquisador (4 fontes)║
+╚════════════════════════╝
+<span class="seq">▸ Analista (8 gráficos Python)</span>
+<span class="seq">▸ <span class="hitl">HumanApproval</span> (aprova lista)</span>
+<span class="seq">▸ Redator (10 slides)</span>
+<span class="seq">▸ Revisor</span></pre>
+      </div>
+
+      <div class="usecase-card">
+        <div class="usecase-head">
+          <span class="usecase-id">5.4 · GITHUB + SUPABASE</span>
+          <span class="usecase-time">1:28 P50 · 3:51 P95</span>
+        </div>
+        <div class="usecase-title">3 repos + schema de banco unificado</div>
+        <div class="usecase-sub">0 grupos paralelos · Custo $0.12</div>
+        <pre class="usecase-flow"><span class="seq">▸ Analista (lê 3 repos)</span>
+<span class="seq">▸ Redator (propõe schema)</span>
+<span class="seq">▸ <span class="hitl">HumanApproval</span>  ← obrigatório</span>
+       <span class="hitl">banco = ação irreversível</span>
+<span class="seq">▸ Organizador (tags)</span>
+<span class="seq">▸ Migration (Supabase)</span>
+<span class="seq">▸ Redator (issues GitHub)</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. LATÊNCIA -->
+  <section>
+    <h2><span class="num">06</span> Latência P50 / P95 por caso de uso</h2>
+    <p class="section-desc">
+      Estimativas alinhadas com o Documento Mestre. P95 é 2-3× o P50 — consistente com benchmarks de sistemas LLM-agent em produção 2026. Tempo de aprovação humana domina o caso 5.4.
+    </p>
+
+    <div class="latency-table">
+      <div class="latency-row header">
+        <span>Caso</span>
+        <span>Nome</span>
+        <span>P50</span>
+        <span>P95</span>
+        <span>Custo</span>
+      </div>
+      <div class="latency-row">
+        <span class="case-id">5.1</span>
+        <div>
+          <div class="case-name">Escrita Literária</div>
+          <div class="lat-bar"><div class="lat-bar-fill" style="width:18%"></div></div>
+        </div>
+        <span class="lat-p50">1:06</span>
+        <span class="lat-p95">2:18</span>
+        <span class="lat-cost">$1.16</span>
+      </div>
+      <div class="latency-row">
+        <span class="case-id">5.2</span>
+        <div>
+          <div class="case-name">Audiovisual (base)</div>
+          <div class="lat-bar"><div class="lat-bar-fill" style="width:30%"></div></div>
+        </div>
+        <span class="lat-p50">1:48</span>
+        <span class="lat-p95">2:43</span>
+        <span class="lat-cost">$2.55</span>
+      </div>
+      <div class="latency-row">
+        <span class="case-id">5.2+</span>
+        <div>
+          <div class="case-name">Audiovisual (3 variações/cena)</div>
+          <div class="lat-bar"><div class="lat-bar-fill" style="width:62%"></div></div>
+        </div>
+        <span class="lat-p50">3:40</span>
+        <span class="lat-p95">5:45</span>
+        <span class="lat-cost">$4.10</span>
+      </div>
+      <div class="latency-row">
+        <span class="case-id">5.3</span>
+        <div>
+          <div class="case-name">Análise Corporativa</div>
+          <div class="lat-bar"><div class="lat-bar-fill" style="width:25%"></div></div>
+        </div>
+        <span class="lat-p50">1:29</span>
+        <span class="lat-p95">2:58</span>
+        <span class="lat-cost">$0.59</span>
+      </div>
+      <div class="latency-row">
+        <span class="case-id">5.4</span>
+        <div>
+          <div class="case-name">GitHub + Supabase</div>
+          <div class="lat-bar"><div class="lat-bar-fill" style="width:24%"></div></div>
+        </div>
+        <span class="lat-p50">1:28</span>
+        <span class="lat-p95">3:51</span>
+        <span class="lat-cost">$0.12</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. PERSISTÊNCIA -->
+  <section>
+    <h2><span class="num">07</span> Persistência e recuperação de falhas</h2>
+    <p class="section-desc">
+      PostgresSaver nativo da LangGraph 1.0 persiste snapshot do state após cada nó. Thread_id ≤ 255 chars (limitação do schema). HitL pausa o grafo com <code>interrupt()</code> e retoma com <code>Command(resume=...)</code>.
+    </p>
+
+    <div class="two-col">
+      <div class="card-soft">
+        <h3 style="margin-top:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> Stack de persistência</h3>
+        <ul style="font-size:13.5px; color:var(--ink-soft); list-style:none; padding:0;">
+          <li style="margin-bottom:8px; padding-left:18px; position:relative;"><span style="position:absolute; left:0; color:var(--primary); font-weight:700;">▸</span><strong>Checkpointer:</strong> AsyncPostgresSaver (tabelas <code style="font-family:'JetBrains Mono',monospace; font-size:12px;">checkpoints</code>, <code style="font-family:'JetBrains Mono',monospace; font-size:12px;">checkpoint_blobs</code>, <code style="font-family:'JetBrains Mono',monospace; font-size:12px;">checkpoint_writes</code>)</li>
+          <li style="margin-bottom:8px; padding-left:18px; position:relative;"><span style="position:absolute; left:0; color:var(--primary); font-weight:700;">▸</span><strong>Long-term memory:</strong> Mem0 sobre pgvector</li>
+          <li style="margin-bottom:8px; padding-left:18px; position:relative;"><span style="position:absolute; left:0; color:var(--primary); font-weight:700;">▸</span><strong>File storage:</strong> Supabase Storage</li>
+          <li style="margin-bottom:8px; padding-left:18px; position:relative;"><span style="position:absolute; left:0; color:var(--primary); font-weight:700;">▸</span><strong>Cross-graph store:</strong> Postgres-backed Store</li>
+        </ul>
+      </div>
+      <div class="card-soft">
+        <h3 style="margin-top:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Recuperação de falhas</h3>
+        <ul style="font-size:13.5px; color:var(--ink-soft); list-style:none; padding:0;">
+          <li style="margin-bottom:8px; padding-left:18px; position:relative;"><span style="position:absolute; left:0; color:var(--c-io); font-weight:700;">▸</span><strong>Container reinicia:</strong> k8s/systemd reinicia; checkpointer recarrega via thread_id</li>
+          <li style="margin-bottom:8px; padding-left:18px; position:relative;"><span style="position:absolute; left:0; color:var(--c-io); font-weight:700;">▸</span><strong>5xx de modelo:</strong> RetryPolicy (3× com backoff 1s, 2s, 4s)</li>
+          <li style="margin-bottom:8px; padding-left:18px; position:relative;"><span style="position:absolute; left:0; color:var(--c-io); font-weight:700;">▸</span><strong>Timeout &gt; 30s:</strong> Fallback Claude → Gemini → Hermes</li>
+          <li style="margin-bottom:8px; padding-left:18px; position:relative;"><span style="position:absolute; left:0; color:var(--c-io); font-weight:700;">▸</span><strong>Rate limit 429:</strong> Backoff 10s, 30s, 60s, 120s, 300s</li>
+          <li style="margin-bottom:8px; padding-left:18px; position:relative;"><span style="position:absolute; left:0; color:var(--c-revisor); font-weight:700;">▸</span><strong>Loop infinito:</strong> IsLastStep (25 supersteps) → pede simplificação</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="margin-top:36px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M9 12l2 2 4-4"/></svg> Exemplo de HITL (caso 5.4 — Supabase)</h3>
+    <pre class="schema-block"><span class="c"># Nó HumanApproval no grafo</span>
+<span class="k">def</span> human_approval(state: AgentState) -> <span class="n">Command</span>:
+    <span class="c"># Pausa o grafo e serializa estado no Postgres</span>
+    decision = <span class="n">interrupt</span>({
+        <span class="s">"payload"</span>: state[<span class="s">"plan"</span>],
+        <span class="s">"action_requests"</span>: [{<span class="s">"action"</span>: <span class="s">"apply_migration"</span>}],
+        <span class="s">"review_configs"</span>: {<span class="s">"decision_types"</span>: [<span class="s">"approve"</span>, <span class="s">"edit"</span>, <span class="s">"reject"</span>]}
+    })
+    <span class="k">if</span> decision[<span class="s">"type"</span>] == <span class="s">"approve"</span>:
+        <span class="k">return</span> <span class="n">Command</span>(goto=<span class="s">"organizador"</span>)
+    <span class="k">elif</span> decision[<span class="s">"type"</span>] == <span class="s">"edit"</span>:
+        <span class="k">return</span> <span class="n">Command</span>(update={<span class="s">"plan"</span>: decision[<span class="s">"changes"</span>]}, goto=<span class="s">"plan_gen"</span>)
+    <span class="k">else</span>:
+        <span class="k">return</span> <span class="n">Command</span>(goto=<span class="s">"__end__"</span>, update={<span class="s">"final_deliverable"</span>: {<span class="s">"cancelled"</span>: <span class="k">True</span>}})
+
+<span class="c"># Frontend resume</span>
+graph.<span class="n">invoke</span>(<span class="n">Command</span>(resume={<span class="s">"decisions"</span>: [{<span class="s">"type"</span>: <span class="s">"approve"</span>}]}), config)</pre>
+  </section>
+
+  <!-- 8. MEM0 + LANGSMITH -->
+  <section>
+    <h2><span class="num">08</span> Integrações externas</h2>
+    <p class="section-desc">
+      Mem0 carrega contexto de Robert no início de cada thread e persiste aprendizados no fim (com aprovação). LangSmith captura traces de cada nó com custo, latência e modelo.
+    </p>
+
+    <div class="two-col">
+      <div class="card">
+        <h3 style="margin-top:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg> Mem0 — quem lê e quem escreve</h3>
+        <div class="usecase-flow" style="background:transparent; padding:0;">
+<span class="seq">▸ <strong style="color:var(--c-memoria);">LÊ</strong> Memória: todo início de thread (top_k=8)</span>
+<span class="seq">▸ <strong style="color:var(--c-memoria);">LÊ</strong> Orquestrador: writing_style + projects</span>
+<span class="seq">▸ <strong style="color:var(--c-memoria);">LÊ</strong> Redator: writing_style (caso 5.1)</span>
+<span class="seq">▸ <strong style="color:var(--c-memoria);">LÊ</strong> Revisor: feedback (evita repetir erros)</span>
+<span class="seq">▸ <strong style="color:var(--c-memoria);">LÊ</strong> Bibliotecário: project mappings</span>
+<span class="seq" style="margin-top:8px;">▸ <strong style="color:var(--c-mec);">ESCREVE</strong> após 👍/👎 → feedback</span>
+<span class="seq">▸ <strong style="color:var(--c-mec);">ESCREVE</strong> novo projeto detectado</span>
+<span class="seq">▸ <strong style="color:var(--c-mec);">ESCREVE</strong> ajuste de tom aprovado</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg> LangSmith — traces capturados</h3>
+        <div class="usecase-flow" style="background:transparent; padding:0;">
+<span class="seq">▸ <strong>run_id</strong> + <strong>thread_id</strong> + parent_run_id</span>
+<span class="seq">▸ <strong>name</strong> (qual nó) + inputs + outputs</span>
+<span class="seq">▸ <strong>latency_ms</strong> (P50/P95 por nó)</span>
+<span class="seq">▸ <strong>tokens_in / tokens_out</strong> + <strong>cost_usd</strong></span>
+<span class="seq">▸ <strong>model_name</strong> (qual modelo)</span>
+<span class="seq">▸ <strong>error_type</strong> + <strong>error_message</strong></span>
+<span class="seq">▸ <strong>human_interrupt_id</strong> (HITL)</span>
+<span class="seq" style="margin-top:8px;">▸ <strong>cascade_decision</strong> (auditoria da cascata)</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="container">
+    <div class="brand">Naninne</div>
+    <div>Documento técnico do orquestrador · v1.0 · 6 de julho de 2026</div>
+    <div style="margin-top:4px;">LangGraph 1.0 · Postgres · Mem0 · LangSmith · Supabase</div>
+  </div>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '13px',
+      primaryColor: '#eef0fd',
+      primaryTextColor: '#14171e',
+      primaryBorderColor: '#5B5FE9',
+      lineColor: '#5B5FE9',
+      secondaryColor: '#f7f5f0',
+      tertiaryColor: '#faf8f3',
+      noteBkgColor: '#f0e9d8',
+      noteTextColor: '#14171e',
+      noteBorderColor: '#c97b3f',
+      activationBorderColor: '#5B5FE9',
+      activationBkgColor: '#eef0fd',
+      stateBkg: '#ffffff',
+      stateBorder: '#5B5FE9',
+      stateTextColor: '#14171e',
+      clusterBkg: '#faf8f3',
+      clusterBorder: '#e9e3d6',
+      edgeLabelBackground: '#ffffff',
+      arrowheadColor: '#5B5FE9',
+    },
+    flowchart: { curve: 'basis', padding: 20 },
+    stateDiagram: { fontSize: 12 }
+  });
+</script>
+</body>
+</html>

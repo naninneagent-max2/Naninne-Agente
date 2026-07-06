@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Naninne — Biblioteca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F7F5;
+    --bg-card: #FFFFFF;
+    --bg-soft: #F1F1EE;
+    --border: #E8E8E4;
+    --border-soft: #EFEFEC;
+    --text: #14171E;
+    --text-2: #5A5F6A;
+    --text-3: #8C9098;
+    --primary: #5B5FE9;
+    --primary-soft: #EEEFFD;
+    --primary-hover: #4A4ED8;
+    --writing: #2563EB;
+    --writing-soft: #EFF4FE;
+    --audiovisual: #EA580C;
+    --audiovisual-soft: #FEF0E5;
+    --mercado: #059669;
+    --mercado-soft: #E8F5EF;
+    --tech: #475569;
+    --tech-soft: #EEF1F4;
+    --pdf-c: #EA580C;
+    --pdf-bg: #FEF0E5;
+    --audio-c: #059669;
+    --audio-bg: #E8F5EF;
+    --image-c: #2563EB;
+    --image-bg: #EFF4FE;
+    --video-c: #DC2626;
+    --video-bg: #FEE7E7;
+    --note-c: #7C3AED;
+    --note-bg: #F2EAFA;
+    --shadow-xs: 0 1px 2px rgba(20,23,30,0.04);
+    --shadow-sm: 0 2px 6px rgba(20,23,30,0.05);
+    --shadow-md: 0 6px 18px rgba(20,23,30,0.07);
+    --shadow-lg: 0 12px 32px rgba(20,23,30,0.09);
+    --radius: 12px;
+    --topbar: 64px;
+    --sidebar: 240px;
+    --right-panel: 320px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    display: grid;
+    grid-template-columns: var(--sidebar) 1fr var(--right-panel);
+    grid-template-rows: var(--topbar) 1fr;
+    grid-template-areas: "topbar topbar topbar" "sidebar main right";
+    min-height: 100vh;
+  }
+  .topbar {
+    grid-area: topbar;
+    display: flex; align-items: center; padding: 0 24px; gap: 24px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-soft);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 600; font-size: 16px; color: var(--text);
+    width: 216px;
+  }
+  .brand-mark {
+    width: 28px; height: 28px;
+    background: var(--primary); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; box-shadow: 0 2px 8px rgba(91,95,233,0.25);
+  }
+  .global-search { flex: 1; max-width: 640px; position: relative; }
+  .global-search input {
+    width: 100%; height: 40px; padding: 0 16px 0 42px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-soft);
+    font-family: inherit; font-size: 14px; color: var(--text);
+    transition: all 200ms;
+  }
+  .global-search input:focus {
+    outline: none; border-color: var(--primary);
+    background: white; box-shadow: 0 0 0 4px var(--primary-soft);
+  }
+  .global-search svg { position: absolute; left: 14px; top: 12px; color: var(--text-3); }
+  .global-search kbd {
+    position: absolute; right: 10px; top: 11px;
+    font-family: inherit; font-size: 11px; color: var(--text-3);
+    background: white; border: 1px solid var(--border);
+    border-radius: 5px; padding: 2px 6px;
+  }
+  .topbar-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 8px; border: none;
+    background: transparent; display: flex; align-items: center; justify-content: center;
+    color: var(--text-2); cursor: pointer; transition: background 200ms;
+  }
+  .icon-btn:hover { background: var(--bg-soft); color: var(--text); }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, #5B5FE9, #8B5FE9); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 13px; margin-left: 8px;
+    box-shadow: 0 2px 6px rgba(91,95,233,0.25);
+  }
+  .sidebar {
+    grid-area: sidebar; background: var(--bg);
+    border-right: 1px solid var(--border-soft);
+    padding: 20px 12px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .sidebar-section-label {
+    font-size: 11px; font-weight: 500; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 12px 12px 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 12px; border-radius: 8px;
+    color: var(--text-2); font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 200ms; text-decoration: none;
+  }
+  .nav-item:hover { background: var(--bg-soft); color: var(--text); }
+  .nav-item.active { background: var(--primary-soft); color: var(--primary); }
+  .nav-item .ico { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-item .badge {
+    margin-left: auto; background: var(--bg-soft); color: var(--text-3);
+    font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px;
+  }
+  .nav-item.active .badge { background: white; color: var(--primary); }
+  .sidebar-foot { margin-top: auto; padding: 12px; border-top: 1px solid var(--border-soft); }
+  .usage-card {
+    background: var(--bg-card); border: 1px solid var(--border-soft);
+    border-radius: 12px; padding: 14px;
+  }
+  .usage-card h4 {
+    font-size: 12px; font-weight: 600; color: var(--text-2);
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .usage-bar { height: 6px; background: var(--bg-soft); border-radius: 3px; overflow: hidden; }
+  .usage-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #8B5FE9); border-radius: 3px; }
+  .usage-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-top: 6px; }
+  .main { grid-area: main; padding: 28px 40px 60px; overflow-y: auto; min-width: 0; }
+  .main-inner { max-width: 100%; }
+
+  .page-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .page-title {
+    font-size: 24px; font-weight: 600; letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .page-title .count {
+    font-size: 13px; font-weight: 500; color: var(--text-3);
+    background: var(--bg-card); border: 1px solid var(--border-soft);
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .page-sub { color: var(--text-2); font-size: 13.5px; margin-top: 4px; }
+
+  .big-search { position: relative; margin-bottom: 16px; }
+  .big-search input {
+    width: 100%; height: 52px; padding: 0 60px 0 50px;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--bg-card);
+    font-family: inherit; font-size: 15px; color: var(--text);
+    box-shadow: var(--shadow-xs);
+    transition: all 200ms;
+  }
+  .big-search input:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-soft);
+  }
+  .big-search .ico-left {
+    position: absolute; left: 18px; top: 18px; color: var(--text-3);
+  }
+  .big-search .ai-btn {
+    position: absolute; right: 12px; top: 10px;
+    height: 32px; padding: 0 14px; border-radius: 8px;
+    background: var(--primary-soft); color: var(--primary);
+    border: none; font-family: inherit; font-size: 12.5px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+  }
+  .big-search .ai-btn:hover { background: var(--primary); color: white; }
+
+  .chip-row {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--bg-card); border: 1px solid var(--border-soft);
+    font-size: 13px; font-weight: 500; color: var(--text-2);
+    cursor: pointer; transition: all 200ms;
+  }
+  .chip:hover { border-color: var(--primary); color: var(--text); }
+  .chip.active { background: var(--primary); border-color: var(--primary); color: white; }
+  .chip .dot-c { width: 8px; height: 8px; border-radius: 2px; }
+  .chip .count-c {
+    background: var(--bg-soft); color: var(--text-3);
+    font-size: 11px; padding: 0 6px; border-radius: 4px; font-weight: 600;
+  }
+  .chip.active .count-c { background: rgba(255,255,255,0.25); color: white; }
+
+  .filter-bar {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 18px; padding: 12px 16px;
+    background: var(--bg-card); border: 1px solid var(--border-soft);
+    border-radius: 12px;
+  }
+  .filter-bar-label {
+    font-size: 12px; font-weight: 500; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.04em;
+    margin-right: 4px;
+  }
+  .mini-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 6px;
+    background: var(--bg-soft); font-size: 12.5px;
+    color: var(--text-2); font-weight: 500; cursor: pointer;
+    transition: all 200ms;
+  }
+  .mini-chip:hover { background: var(--border); }
+  .mini-chip.active { background: var(--primary-soft); color: var(--primary); }
+  .filter-bar-sep { color: var(--border); margin: 0 2px; }
+  .filter-bar-right {
+    margin-left: auto; display: flex; gap: 6px;
+  }
+  .view-btn {
+    width: 30px; height: 30px; border-radius: 6px;
+    border: 1px solid var(--border-soft);
+    background: white; color: var(--text-2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .view-btn.active { background: var(--primary-soft); color: var(--primary); border-color: transparent; }
+
+  .lib-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .lib-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 200ms;
+    display: flex; flex-direction: column;
+  }
+  .lib-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .lib-card.selected { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+
+  .lib-thumb {
+    aspect-ratio: 4/3;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .lib-thumb.t-pdf { background: linear-gradient(135deg, #FEF0E5 0%, #FDE0CC 100%); color: var(--pdf-c); }
+  .lib-thumb.t-audio { background: linear-gradient(135deg, #E8F5EF 0%, #C9EFE0 100%); color: var(--audio-c); }
+  .lib-thumb.t-image { background: linear-gradient(135deg, #EFF4FE 0%, #D6E5FE 100%); color: var(--image-c); }
+  .lib-thumb.t-video { background: linear-gradient(135deg, #FEE7E7 0%, #FED1D1 100%); color: var(--video-c); }
+  .lib-thumb.t-note { background: linear-gradient(135deg, #F2EAFA 0%, #E5D4F6 100%); color: var(--note-c); }
+
+  .lib-thumb-corner {
+    position: absolute; top: 10px; right: 10px;
+    background: rgba(255,255,255,0.85);
+    border-radius: 4px; padding: 2px 7px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    color: var(--text-2); text-transform: uppercase;
+  }
+  .lib-thumb .duration {
+    position: absolute; bottom: 10px; right: 10px;
+    background: rgba(20,23,30,0.7); color: white;
+    border-radius: 4px; padding: 2px 7px;
+    font-size: 10.5px; font-weight: 500;
+  }
+
+  .lib-body { padding: 12px 14px 14px; }
+  .lib-title {
+    font-size: 13.5px; font-weight: 600; color: var(--text);
+    margin-bottom: 8px; line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+    min-height: 36px;
+  }
+  .lib-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .lib-tag {
+    font-size: 10.5px; font-weight: 500;
+    background: var(--bg-soft); color: var(--text-2);
+    padding: 2px 7px; border-radius: 4px;
+  }
+  .lib-tag.tag-proj { background: var(--primary-soft); color: var(--primary); }
+  .lib-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11.5px; color: var(--text-3);
+  }
+  .lib-foot .src { display: flex; align-items: center; gap: 4px; }
+
+  .fab {
+    position: fixed; bottom: 32px; right: 360px;
+    height: 48px; padding: 0 18px; border-radius: 24px;
+    background: var(--primary); color: white;
+    border: none; font-family: inherit; font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(91,95,233,0.40);
+    transition: all 200ms; z-index: 40;
+  }
+  .fab:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 12px 28px rgba(91,95,233,0.45); }
+
+  .right-panel {
+    grid-area: right; background: var(--bg);
+    border-left: 1px solid var(--border-soft);
+    padding: 24px 20px; overflow-y: auto;
+  }
+  .rp-section + .rp-section { margin-top: 24px; }
+  .rp-section-title {
+    font-size: 11px; font-weight: 600; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .rp-card {
+    background: var(--bg-card); border: 1px solid var(--border-soft);
+    border-radius: 12px; padding: 14px;
+  }
+  .detail-thumb {
+    aspect-ratio: 4/3; border-radius: 10px;
+    background: linear-gradient(135deg, #FEF0E5, #FDE0CC);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--pdf-c); margin-bottom: 14px;
+    position: relative; overflow: hidden;
+  }
+  .detail-thumb::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.04));
+  }
+  .detail-thumb svg { width: 42px; height: 42px; }
+
+  .detail-title {
+    font-size: 16px; font-weight: 600; color: var(--text);
+    margin-bottom: 4px; line-height: 1.3;
+  }
+  .detail-meta {
+    font-size: 12.5px; color: var(--text-3);
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 14px;
+  }
+  .detail-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 14px; }
+  .detail-tag {
+    font-size: 11px; font-weight: 500;
+    background: var(--bg-soft); color: var(--text-2);
+    padding: 3px 8px; border-radius: 5px;
+  }
+  .detail-tag.proj { background: var(--primary-soft); color: var(--primary); }
+  .kv-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12.5px; padding: 7px 0;
+  }
+  .kv-row + .kv-row { border-top: 1px solid var(--border-soft); }
+  .kv-row .k { color: var(--text-3); }
+  .kv-row .v { color: var(--text); font-weight: 500; }
+
+  .cite-box {
+    background: var(--bg-soft); border-radius: 8px; padding: 10px 12px;
+    font-size: 12.5px; color: var(--text-2); line-height: 1.5;
+    border-left: 3px solid var(--primary);
+    margin-top: 10px;
+  }
+  .cite-box .page { font-size: 10.5px; color: var(--text-3); font-weight: 600; margin-top: 4px; }
+
+  .rp-actions { display: flex; flex-direction: column; gap: 8px; }
+  .rp-btn {
+    width: 100%; height: 38px; border-radius: 8px;
+    background: var(--primary); color: white;
+    border: none; font-family: inherit; font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    cursor: pointer; transition: all 200ms;
+    box-shadow: 0 2px 8px rgba(91,95,233,0.25);
+  }
+  .rp-btn:hover { background: var(--primary-hover); }
+  .rp-btn.sec { background: var(--bg-card); color: var(--text-2); border: 1px solid var(--border); box-shadow: none; }
+  .rp-btn.sec:hover { border-color: var(--primary); color: var(--primary); }
+
+  .rp-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--mercado-soft); color: var(--mercado);
+    font-size: 11px; font-weight: 600;
+    padding: 3px 8px; border-radius: 999px;
+  }
+  .rp-pill .live-dot { width: 6px; height: 6px; background: var(--mercado); border-radius: 50%; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+      </div>
+      Naninne
+    </div>
+    <div class="global-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" placeholder="Buscar em 1.247 itens...">
+      <kbd>⌘ K</kbd>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></button>
+      <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+      <div class="avatar">R</div>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Navegação</div>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>Início</a>
+    <a class="nav-item active">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></svg>
+      Biblioteca
+      <span class="badge">1.2k</span>
+    </a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg>Escrita Criativa</a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>Audiovisual</a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>Mercado</a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>Documentos <span class="badge">28</span></a>
+    <div class="sidebar-section-label">Sistema</div>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 0-3.16 19.5"></path><path d="M12 2a10 10 0 0 1 7.84 16.5"></path><path d="M12 2v10"></path><path d="M12 22V12"></path></svg>Memória <span class="badge">12</span></a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Gestão Técnica</a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Configurações</a>
+    <div class="sidebar-foot">
+      <div class="usage-card">
+        <h4>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          Uso este mês
+        </h4>
+        <div class="usage-bar"><div class="usage-bar-fill" style="width: 42%;"></div></div>
+        <div class="usage-meta">
+          <span>42 / 100 ops</span>
+          <span>R$ 12,40</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-inner">
+
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">
+            Biblioteca
+            <span class="count">1.247 itens</span>
+          </h1>
+          <p class="page-sub">PDFs, áudios, imagens, vídeos, notas — tudo pesquisável por significado.</p>
+        </div>
+      </div>
+
+      <div class="big-search">
+        <svg class="ico-left" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" placeholder="Buscar por significado — ex: 'documentos sobre Maquiavel' ou 'reunião com cliente da RC'">
+        <button class="ai-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+          Busca semântica
+        </button>
+      </div>
+
+      <div class="chip-row">
+        <span class="chip active">Tudo <span class="count-c">1.247</span></span>
+        <span class="chip"><span class="dot-c" style="background: var(--pdf-c);"></span>PDFs <span class="count-c">412</span></span>
+        <span class="chip"><span class="dot-c" style="background: var(--audio-c);"></span>Áudios <span class="count-c">198</span></span>
+        <span class="chip"><span class="dot-c" style="background: var(--image-c);"></span>Imagens <span class="count-c">324</span></span>
+        <span class="chip"><span class="dot-c" style="background: var(--video-c);"></span>Vídeos <span class="count-c">67</span></span>
+        <span class="chip"><span class="dot-c" style="background: var(--note-c);"></span>Notas <span class="count-c">246</span></span>
+      </div>
+
+      <div class="filter-bar">
+        <span class="filter-bar-label">Projeto</span>
+        <span class="mini-chip active">Todos</span>
+        <span class="mini-chip">Escrita</span>
+        <span class="mini-chip">Audiovisual</span>
+        <span class="mini-chip">Mercado</span>
+        <span class="mini-chip">Tech</span>
+        <span class="filter-bar-sep">|</span>
+        <span class="filter-bar-label">Data</span>
+        <span class="mini-chip">7d</span>
+        <span class="mini-chip active">30d</span>
+        <span class="mini-chip">90d</span>
+        <span class="mini-chip">Tudo</span>
+        <span class="filter-bar-sep">|</span>
+        <span class="mini-chip">Ordenar: recente ↓</span>
+        <div class="filter-bar-right">
+          <button class="view-btn active" title="Grid"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></button>
+          <button class="view-btn" title="Lista"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></button>
+        </div>
+      </div>
+
+      <div class="lib-grid">
+
+        <article class="lib-card selected">
+          <div class="lib-thumb t-pdf">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 13h6M9 17h6"></path></svg>
+            <span class="lib-thumb-corner">PDF</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">O Príncipe — Maquiavel.pdf</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Escrita</span>
+              <span class="lib-tag">#livro</span>
+              <span class="lib-tag">#referência</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>148 págs</span>
+              <span>há 3 dias</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-audio">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            <span class="lib-thumb-corner">ÁUDIO</span>
+            <span class="duration">42:18</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">Entrevista com pesquisador da Casa de Memória.mp3</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Escrita</span>
+              <span class="lib-tag">#entrevista</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>transcrito</span>
+              <span>há 5 dias</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-image">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span class="lib-thumb-corner">IMG</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">Moodboard_O_INVISIVEL_frame_07.png</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Audiovisual</span>
+              <span class="lib-tag">#noir</span>
+              <span class="lib-tag">#ref</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line></svg>1920×1080</span>
+              <span>há 1 sem</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-video">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+            <span class="lib-thumb-corner">VÍDEO</span>
+            <span class="duration">12:04</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">Screen_recording_palestra_Maqui.mp4</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Escrita</span>
+              <span class="lib-tag">#vídeo</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>4 frames</span>
+              <span>há 1 sem</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-note">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg>
+            <span class="lib-thumb-corner">NOTA</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">Anotação: Capítulo XVIII — poder invisível</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Escrita</span>
+              <span class="lib-tag">#rascunho</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>Markdown</span>
+              <span>há 2 sem</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-pdf">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 13h6M9 17h6"></path></svg>
+            <span class="lib-thumb-corner">PDF</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">RC_Agropecuaria_Relatorio_Q1_2026.pdf</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Mercado</span>
+              <span class="lib-tag">#relatório</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>42 págs</span>
+              <span>há 2 sem</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-image">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span class="lib-thumb-corner">IMG</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">Recibo_restaurante_Comodoro.jpg</h3>
+            <div class="lib-tags">
+              <span class="lib-tag">#recibo</span>
+              <span class="lib-tag">#OCR</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>R$ 187,40</span>
+              <span>há 3 sem</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-pdf">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 13h6M9 17h6"></path></svg>
+            <span class="lib-thumb-corner">PDF</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">ABIEC_Pecuaria_Corte_2025.pdf</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Mercado</span>
+              <span class="lib-tag">#estudo</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>68 págs</span>
+              <span>há 1 mês</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-note">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg>
+            <span class="lib-thumb-corner">NOTA</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">Memória — preferências do Robert</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Sistema</span>
+              <span class="lib-tag">#preferência</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 0-3.16 19.5"></path></svg>auto-gerado</span>
+              <span>há 1 mês</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-audio">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            <span class="lib-thumb-corner">ÁUDIO</span>
+            <span class="duration">1:08:42</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">Reunião_RC_Agropecuaria_15jun.m4a</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Mercado</span>
+              <span class="lib-tag">#reunião</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>resumido</span>
+              <span>há 1 mês</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-pdf">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 13h6M9 17h6"></path></svg>
+            <span class="lib-thumb-corner">PDF</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">Supabase_Schema_Unificado.pdf</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Tech</span>
+              <span class="lib-tag">#schema</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>12 págs</span>
+              <span>há 1 mês</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lib-card">
+          <div class="lib-thumb t-image">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span class="lib-thumb-corner">IMG</span>
+          </div>
+          <div class="lib-body">
+            <h3 class="lib-title">Screenshot_Tavily_dashboard.png</h3>
+            <div class="lib-tags">
+              <span class="lib-tag tag-proj">Tech</span>
+              <span class="lib-tag">#ui</span>
+            </div>
+            <div class="lib-foot">
+              <span class="src"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>1440×900</span>
+              <span>há 2 meses</span>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+    </div>
+  </main>
+
+  <aside class="right-panel">
+    <div class="rp-section">
+      <div class="rp-section-title">
+        <span class="rp-pill"><span class="live-dot"></span> SELECIONADO</span>
+        Detalhes
+      </div>
+      <div class="rp-card" style="padding: 12px;">
+        <div class="detail-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 13h6M9 17h6"></path></svg>
+        </div>
+        <h3 class="detail-title">O Príncipe — Maquiavel.pdf</h3>
+        <div class="detail-meta">
+          <span>148 págs</span>
+          <span>·</span>
+          <span>adicionado há 3 dias</span>
+        </div>
+        <div class="detail-tags">
+          <span class="detail-tag proj">Escrita</span>
+          <span class="detail-tag">#livro</span>
+          <span class="detail-tag">#referência</span>
+          <span class="detail-tag">#política</span>
+        </div>
+        <div class="kv-row"><span class="k">Tipo</span><span class="v">PDF · texto extraído</span></div>
+        <div class="kv-row"><span class="k">Trechos indexados</span><span class="v">284</span></div>
+        <div class="kv-row"><span class="k">Citações usadas</span><span class="v">12× no Cap. 3</span></div>
+        <div class="kv-row"><span class="k">Último acesso</span><span class="v">ontem</span></div>
+        <div class="cite-box">
+          "É mais seguro ser temido do que amado, quando se é forçado a abrir mão de uma dessas alternativas."
+          <div class="page">— Cap. XVII, p. 87</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rp-section">
+      <div class="rp-section-title">Ações</div>
+      <div class="rp-actions">
+        <button class="rp-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          Usar como fonte
+        </button>
+        <button class="rp-btn sec">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          Adicionar anotação
+        </button>
+        <button class="rp-btn sec">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6M14 11v6"></path></svg>
+          Mover para lixeira
+        </button>
+      </div>
+    </div>
+
+    <div class="rp-section">
+      <div class="rp-section-title">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 0-3.16 19.5"></path></svg>
+        Memória
+      </div>
+      <div class="rp-card">
+        <div class="kv-row"><span class="k">Memórias ativas</span><span class="v">12</span></div>
+        <div class="kv-row"><span class="k">Latência média</span><span class="v" style="color: var(--mercado);">1.8s</span></div>
+        <div class="kv-row"><span class="k">Custo hoje</span><span class="v">R$ 0,42</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <button class="fab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    Upload
+  </button>
+
+</div>
+</body>
+</html>

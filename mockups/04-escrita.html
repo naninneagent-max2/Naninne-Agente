@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Naninne — Escrita Criativa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F7F5;
+    --bg-card: #FFFFFF;
+    --bg-soft: #F1F1EE;
+    --border: #E8E8E4;
+    --border-soft: #EFEFEC;
+    --text: #14171E;
+    --text-2: #5A5F6A;
+    --text-3: #8C9098;
+    --primary: #5B5FE9;
+    --primary-soft: #EEEFFD;
+    --writing: #2563EB;
+    --writing-soft: #EFF4FE;
+    --writing-soft-2: #F4F8FE;
+    --audiovisual: #EA580C;
+    --mercado: #059669;
+    --mercado-soft: #E8F5EF;
+    --tech: #475569;
+    --shadow-sm: 0 2px 6px rgba(20,23,30,0.05);
+    --shadow-md: 0 6px 18px rgba(20,23,30,0.07);
+    --shadow-lg: 0 12px 32px rgba(20,23,30,0.09);
+    --topbar: 64px;
+    --sidebar: 240px;
+    --right-panel: 320px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    display: grid;
+    grid-template-columns: var(--sidebar) 1fr var(--right-panel);
+    grid-template-rows: var(--topbar) 1fr;
+    grid-template-areas: "topbar topbar topbar" "sidebar main right";
+    min-height: 100vh;
+  }
+  .topbar {
+    grid-area: topbar;
+    display: flex; align-items: center; padding: 0 24px; gap: 24px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-soft);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; color: var(--text); width: 216px; }
+  .brand-mark { width: 28px; height: 28px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 2px 8px rgba(91,95,233,0.25); }
+  .global-search { flex: 1; max-width: 640px; position: relative; }
+  .global-search input { width: 100%; height: 40px; padding: 0 16px 0 42px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-soft); font-family: inherit; font-size: 14px; color: var(--text); transition: all 200ms; }
+  .global-search input:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 4px var(--primary-soft); }
+  .global-search svg { position: absolute; left: 14px; top: 12px; color: var(--text-3); }
+  .global-search kbd { position: absolute; right: 10px; top: 11px; font-family: inherit; font-size: 11px; color: var(--text-3); background: white; border: 1px solid var(--border); border-radius: 5px; padding: 2px 6px; }
+  .topbar-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 8px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; color: var(--text-2); cursor: pointer; transition: background 200ms; }
+  .icon-btn:hover { background: var(--bg-soft); color: var(--text); }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #5B5FE9, #8B5FE9); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; margin-left: 8px; box-shadow: 0 2px 6px rgba(91,95,233,0.25); }
+  .sidebar { grid-area: sidebar; background: var(--bg); border-right: 1px solid var(--border-soft); padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .sidebar-section-label { font-size: 11px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; padding: 12px 12px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; color: var(--text-2); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 200ms; text-decoration: none; }
+  .nav-item:hover { background: var(--bg-soft); color: var(--text); }
+  .nav-item.active { background: var(--primary-soft); color: var(--primary); }
+  .nav-item .ico { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-item .badge { margin-left: auto; background: var(--bg-soft); color: var(--text-3); font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; }
+  .nav-item.active .badge { background: white; color: var(--primary); }
+  .sidebar-foot { margin-top: auto; padding: 12px; border-top: 1px solid var(--border-soft); }
+  .usage-card { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 12px; padding: 14px; }
+  .usage-card h4 { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .usage-bar { height: 6px; background: var(--bg-soft); border-radius: 3px; overflow: hidden; }
+  .usage-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #8B5FE9); border-radius: 3px; }
+  .usage-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-top: 6px; }
+  .main { grid-area: main; padding: 24px 36px 60px; overflow-y: auto; min-width: 0; }
+
+  .page-head { margin-bottom: 14px; }
+  .page-title-row {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }
+  .page-title-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--writing-soft); color: var(--writing);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .page-sub { color: var(--text-2); font-size: 13px; margin-top: 4px; }
+  .page-title-row .right { display: flex; align-items: center; gap: 8px; }
+  .ghost-btn {
+    height: 36px; padding: 0 12px; border-radius: 8px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text-2); font-family: inherit; font-size: 12.5px; font-weight: 500;
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+  }
+  .ghost-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .primary-btn {
+    height: 36px; padding: 0 14px; border-radius: 8px;
+    background: var(--writing); color: white;
+    border: none; font-family: inherit; font-size: 12.5px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+  }
+  .primary-btn:hover { transform: translateY(-1px); }
+
+  .progress-strip {
+    display: flex; align-items: center; gap: 18px;
+    padding: 14px 18px; margin-bottom: 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+  }
+  .progress-info { flex-shrink: 0; }
+  .progress-info .label { font-size: 11.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .progress-info .pct { font-size: 22px; font-weight: 600; color: var(--writing); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.1; margin-top: 2px; }
+  .progress-info .words { font-size: 12px; color: var(--text-2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .progress-bar { flex: 1; height: 8px; background: var(--bg-soft); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--writing) 0%, #60A5FA 100%); border-radius: 4px; }
+  .progress-meta {
+    display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+    font-size: 12px; color: var(--text-2);
+  }
+  .progress-meta .item { display: flex; align-items: center; gap: 5px; }
+  .progress-meta .item .v { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .progress-meta .dot { width: 3px; height: 3px; background: var(--border); border-radius: 50%; }
+
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+  .tab { padding: 10px 14px; font-size: 13.5px; font-weight: 500; color: var(--text-2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 200ms; display: flex; align-items: center; gap: 6px; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--writing); border-bottom-color: var(--writing); }
+  .tab .ico { width: 14px; height: 14px; }
+  .tab .num { background: var(--bg-soft); color: var(--text-3); font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+  .tab.active .num { background: var(--writing-soft); color: var(--writing); }
+
+  .tone-bar {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 18px; padding: 10px 14px;
+    background: var(--writing-soft-2);
+    border: 1px solid #DBE7FB;
+    border-radius: 10px;
+  }
+  .tone-label { font-size: 12px; color: var(--writing); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .tone-options { display: flex; gap: 4px; margin-left: 4px; }
+  .tone-pill {
+    padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 500;
+    color: var(--text-2); cursor: pointer; transition: all 200ms;
+    border: 1px solid transparent;
+  }
+  .tone-pill:hover { color: var(--text); }
+  .tone-pill.active { background: var(--writing); color: white; border-color: var(--writing); }
+  .tone-bar .auto {
+    margin-left: auto; font-size: 11.5px; color: var(--text-3);
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  .write-layout {
+    display: grid; grid-template-columns: 360px 1fr; gap: 18px;
+  }
+  .chapter-list {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .chapter-list-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .chapter-list-head h3 { font-size: 13px; font-weight: 600; color: var(--text); }
+  .chapter-list-head .add-btn {
+    width: 24px; height: 24px; border-radius: 5px;
+    background: var(--writing-soft); color: var(--writing);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; border: none;
+  }
+  .chapter-row {
+    padding: 14px 16px; cursor: pointer;
+    border-bottom: 1px solid var(--border-soft);
+    transition: all 200ms;
+    position: relative;
+  }
+  .chapter-row:last-child { border-bottom: none; }
+  .chapter-row:hover { background: var(--bg-soft); }
+  .chapter-row.active { background: var(--writing-soft-2); }
+  .chapter-row.active::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--writing);
+  }
+  .chapter-num-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .chapter-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600; color: var(--text-3);
+    background: var(--bg-soft); padding: 2px 6px; border-radius: 4px;
+  }
+  .chapter-row.active .chapter-num { background: white; color: var(--writing); }
+  .status-badge {
+    font-size: 10px; font-weight: 600;
+    padding: 2px 7px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .status-pronto { background: var(--mercado-soft); color: var(--mercado); }
+  .status-revisao { background: #FEF3C7; color: #B45309; }
+  .status-rascunho { background: var(--writing-soft); color: var(--writing); }
+  .status-progresso { background: #F2EAFA; color: #7C3AED; }
+  .status-pendente { background: var(--bg-soft); color: var(--text-3); }
+  .chapter-title {
+    font-size: 13.5px; font-weight: 500; color: var(--text);
+    line-height: 1.4; margin-bottom: 6px;
+  }
+  .chapter-meta {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11.5px; color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .chapter-meta .words-c { color: var(--text-2); }
+  .chapter-mini-bar { flex: 1; height: 3px; background: var(--bg-soft); border-radius: 2px; overflow: hidden; max-width: 60px; }
+  .chapter-mini-fill { height: 100%; background: var(--writing); border-radius: 2px; }
+
+  .preview {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .preview-head {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-soft);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .preview-head h2 { font-family: 'DM Serif Display', serif; font-size: 22px; font-weight: 400; color: var(--text); line-height: 1.2; }
+  .preview-actions { display: flex; align-items: center; gap: 6px; }
+  .preview-actions .ic {
+    width: 32px; height: 32px; border-radius: 7px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .preview-actions .ic:hover { border-color: var(--writing); color: var(--writing); }
+  .preview-meta {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 24px;
+    background: var(--bg-soft);
+    font-size: 12px; color: var(--text-2);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .preview-meta .item { display: flex; align-items: center; gap: 5px; }
+  .preview-meta .item .v { color: var(--text); font-weight: 500; }
+  .preview-body {
+    padding: 32px 48px 40px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px; line-height: 1.7;
+    color: var(--text);
+    flex: 1;
+    overflow-y: auto;
+  }
+  .preview-body p { margin-bottom: 1.2em; }
+  .preview-body p:first-of-type::first-letter {
+    font-family: 'DM Serif Display', serif;
+    font-size: 56px; float: left; line-height: 0.85;
+    margin: 6px 8px 0 0; color: var(--writing);
+    font-weight: 400;
+  }
+  .preview-body .highlight {
+    background: linear-gradient(180deg, transparent 60%, rgba(234, 88, 12, 0.18) 60%);
+    padding: 0 2px;
+  }
+  .preview-foot {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border-soft);
+    display: flex; align-items: center; gap: 10px;
+    background: var(--writing-soft-2);
+  }
+  .continue-btn {
+    flex: 1; height: 42px; border-radius: 10px;
+    background: var(--writing); color: white;
+    border: none; font-family: inherit; font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.30);
+  }
+  .continue-btn:hover { transform: translateY(-1px); }
+  .ask-ai-btn {
+    height: 42px; padding: 0 16px; border-radius: 10px;
+    background: white; color: var(--writing);
+    border: 1px solid #DBE7FB;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+  }
+  .ask-ai-btn:hover { background: var(--writing-soft); }
+
+  .right-panel { grid-area: right; background: var(--bg); border-left: 1px solid var(--border-soft); padding: 24px 20px; overflow-y: auto; }
+  .rp-section + .rp-section { margin-top: 24px; }
+  .rp-section-title { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .rp-card { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 12px; padding: 14px; }
+  .rp-progress { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--text-2); }
+  .rp-progress + .rp-progress { border-top: 1px solid var(--border-soft); }
+  .rp-progress .check { width: 16px; height: 16px; border-radius: 50%; background: var(--mercado-soft); color: var(--mercado); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .rp-progress.active .check { background: var(--writing-soft); color: var(--writing); position: relative; }
+  .rp-progress.active .check::after { content: ""; position: absolute; inset: -3px; border: 2px solid var(--writing); border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .rp-mem-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; }
+  .rp-mem-row + .rp-mem-row { border-top: 1px solid var(--border-soft); }
+  .rp-mem-row .k { color: var(--text-2); }
+  .rp-mem-row .v { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .rp-mem-row .v.green { color: var(--mercado); }
+  .rp-pill { display: inline-flex; align-items: center; gap: 5px; background: var(--mercado-soft); color: var(--mercado); font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
+  .rp-pill .live-dot { width: 6px; height: 6px; background: var(--mercado); border-radius: 50%; }
+  .ref-card {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; background: var(--writing-soft-2);
+    border: 1px solid #DBE7FB;
+    border-radius: 8px; margin-top: 8px;
+  }
+  .ref-card .ico { color: var(--writing); flex-shrink: 0; margin-top: 1px; }
+  .ref-card .body { font-size: 12px; color: var(--text-2); line-height: 1.45; }
+  .ref-card .body strong { color: var(--text); font-weight: 600; }
+  .ref-card .body .pg { color: var(--text-3); font-size: 10.5px; font-weight: 600; }
+  .cite-mini {
+    background: var(--bg-soft);
+    border-left: 3px solid var(--writing);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12px; color: var(--text-2);
+    line-height: 1.5; font-style: italic;
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+      </div>
+      Naninne
+    </div>
+    <div class="global-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" placeholder="Buscar em 1.247 itens...">
+      <kbd>⌘ K</kbd>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></button>
+      <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+      <div class="avatar">R</div>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Navegação</div>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>Início</a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></svg>Biblioteca <span class="badge">1.2k</span></a>
+    <a class="nav-item active">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><circle cx="11" cy="11" r="2"></circle></svg>
+      Escrita Criativa
+    </a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>Audiovisual</a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>Mercado</a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>Documentos <span class="badge">28</span></a>
+    <div class="sidebar-section-label">Sistema</div>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 0-3.16 19.5"></path></svg>Memória <span class="badge">12</span></a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Gestão Técnica</a>
+    <a class="nav-item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Configurações</a>
+    <div class="sidebar-foot">
+      <div class="usage-card">
+        <h4><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>Uso este mês</h4>
+        <div class="usage-bar"><div class="usage-bar-fill" style="width: 42%;"></div></div>
+        <div class="usage-meta"><span>42 / 100 ops</span><span>R$ 12,40</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <div class="page-title-row">
+        <div>
+          <h1 class="page-title">
+            <span class="page-title-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><circle cx="11" cy="11" r="2"></circle></svg>
+            </span>
+            O Príncipe Invisível
+          </h1>
+          <p class="page-sub">Livro baseado em Maquiavel · 5 capítulos · iniciado em 15 de junho</p>
+        </div>
+        <div class="right">
+          <button class="ghost-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            Sincronizar
+          </button>
+          <button class="primary-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Novo capítulo
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-strip">
+      <div class="progress-info">
+        <div class="label">Progresso do livro</div>
+        <div class="pct">23%</div>
+        <div class="words">4.200 de 18.000 palavras</div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 23%;"></div>
+      </div>
+      <div class="progress-meta">
+        <div class="item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg><span class="v">5</span> capítulos</div>
+        <span class="dot"></span>
+        <div class="item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><span class="v">~6h</span> restantes</div>
+        <span class="dot"></span>
+        <div class="item"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg><span class="v">12</span> anotações</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>Projeto</div>
+      <div class="tab active">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        Capítulos
+        <span class="num">5</span>
+      </div>
+      <div class="tab"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>Anotações <span class="num">12</span></div>
+      <div class="tab"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>Estilo</div>
+      <div class="tab"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Exportar</div>
+    </div>
+
+    <div class="tone-bar">
+      <span class="tone-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg>
+        Tom:
+      </span>
+      <div class="tone-options">
+        <div class="tone-pill">Formal</div>
+        <div class="tone-pill">Acessível</div>
+        <div class="tone-pill">Acadêmico</div>
+        <div class="tone-pill active">Literário</div>
+      </div>
+      <span class="auto">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+        Consistente com Cap. 1 a 3
+      </span>
+    </div>
+
+    <div class="write-layout">
+
+      <div class="chapter-list">
+        <div class="chapter-list-head">
+          <h3>5 capítulos</h3>
+          <button class="add-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+        </div>
+        <div class="chapter-row">
+          <div class="chapter-num-row">
+            <span class="chapter-num">01</span>
+            <span class="status-badge status-pronto">Pronto</span>
+          </div>
+          <div class="chapter-title">Introdução — O olhar sobre Maquiavel</div>
+          <div class="chapter-meta">
+            <span class="words-c">2.100 palavras</span>
+            <span>·</span>
+            <span>concluído há 12 dias</span>
+            <div class="chapter-mini-bar"><div class="chapter-mini-fill" style="width: 100%; background: var(--mercado);"></div></div>
+          </div>
+        </div>
+        <div class="chapter-row">
+          <div class="chapter-num-row">
+            <span class="chapter-num">02</span>
+            <span class="status-badge status-revisao">Em revisão</span>
+          </div>
+          <div class="chapter-title">O Príncipe e a modernidade</div>
+          <div class="chapter-meta">
+            <span class="words-c">1.800 palavras</span>
+            <span>·</span>
+            <span>3 anotações</span>
+            <div class="chapter-mini-bar"><div class="chapter-mini-fill" style="width: 100%; background: #B45309;"></div></div>
+          </div>
+        </div>
+        <div class="chapter-row">
+          <div class="chapter-num-row">
+            <span class="chapter-num">03</span>
+            <span class="status-badge status-rascunho">Rascunho</span>
+          </div>
+          <div class="chapter-title">O poder visível</div>
+          <div class="chapter-meta">
+            <span class="words-c">3.400 palavras</span>
+            <span>·</span>
+            <span>rascunho inicial</span>
+            <div class="chapter-mini-bar"><div class="chapter-mini-fill" style="width: 78%;"></div></div>
+          </div>
+        </div>
+        <div class="chapter-row active">
+          <div class="chapter-num-row">
+            <span class="chapter-num">04</span>
+            <span class="status-badge status-progresso">Em progresso</span>
+          </div>
+          <div class="chapter-title">O poder invisível</div>
+          <div class="chapter-meta">
+            <span class="words-c">4.200 palavras</span>
+            <span>·</span>
+            <span>23% do total</span>
+            <div class="chapter-mini-bar"><div class="chapter-mini-fill" style="width: 23%;"></div></div>
+          </div>
+        </div>
+        <div class="chapter-row">
+          <div class="chapter-num-row">
+            <span class="chapter-num">05</span>
+            <span class="status-badge status-pendente">Pendente</span>
+          </div>
+          <div class="chapter-title">Conclusão — O Príncipe entre nós</div>
+          <div class="chapter-meta">
+            <span class="words-c">0 palavras</span>
+            <span>·</span>
+            <span>ainda não iniciado</span>
+            <div class="chapter-mini-bar"><div class="chapter-mini-fill" style="width: 0%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-head">
+          <h2>Capítulo 4 — O poder invisível</h2>
+          <div class="preview-actions">
+            <button class="ic" title="Histórico de versões">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+            </button>
+            <button class="ic" title="Comentários">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            </button>
+            <button class="ic" title="Mais opções">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+            </button>
+          </div>
+        </div>
+        <div class="preview-meta">
+          <div class="item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg><span class="v">4.200</span> palavras</div>
+          <div class="item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>~<span class="v">17</span> min de leitura</div>
+          <div class="item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="v">2</span> trechos destacados</div>
+          <div class="item" style="margin-left: auto;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>Última edição: <span class="v">há 3h</span></div>
+        </div>
+        <div class="preview-body">
+          <p>Há poder que se mostra e poder que se esconde. Maquiavel, com a frieza de quem já viu demais, entendia que a cena pública é apenas a superfície do jogo — e que <span class="highlight">o verdadeiro Príncipe move-se nas sombras dos bastidores</span>, onde as decisões não se vestem de espetáculo.</p>
+          <p>Este capítulo se debruça sobre a arquitetura invisível do mando: as redes de confiança, as dívidas de favor, as informações que circulam sem papel. É uma anatomia discreta — feita de gestos miúdos, pactos nunca escritos, silêncios cúmplices. Mais do que nunca, o leitor é convidado a uma leitura paciente dessa coreografia.</p>
+          <p>Para o leitor contemporâneo, acostumado a presidentes que tuitam e executivos que postam em rede social, esse poder discreto parece quase extinto. Mas ele segue aqui — recalibrado, mais silencioso do que nunca, igualmente eficaz. A pergunta que guia estas páginas é simples: o que mudou na forma, e o que permanece intacto na função?</p>
+        </div>
+        <div class="preview-foot">
+          <button class="continue-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><circle cx="11" cy="11" r="2"></circle></svg>
+            Continuar escrevendo com Naninne
+          </button>
+          <button class="ask-ai-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+            Sugerir argumento
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <aside class="right-panel">
+    <div class="rp-section">
+      <div class="rp-section-title">
+        <span class="rp-pill"><span class="live-dot"></span> AO VIVO</span>
+        Última operação
+      </div>
+      <div class="rp-card">
+        <div class="rp-progress">
+          <div class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <span>Pedido entendido</span>
+        </div>
+        <div class="rp-progress">
+          <div class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <span>Estilo Cap. 1 a 3 carregado</span>
+        </div>
+        <div class="rp-progress">
+          <div class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <span>12 anotações relevantes</span>
+        </div>
+        <div class="rp-progress">
+          <div class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <span>Citação Cap. XVIII (p. 47) verificada</span>
+        </div>
+        <div class="rp-progress active">
+          <div class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <span>Escrevendo 8 páginas</span>
+        </div>
+        <div class="rp-progress">
+          <div class="check"></div>
+          <span style="color: var(--text-3);">Revisão final</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rp-section">
+      <div class="rp-section-title">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+        Fontes citadas
+      </div>
+      <div class="rp-card">
+        <div class="ref-card">
+          <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <div class="body">
+            <strong>O Príncipe</strong> — Maquiavel<br>
+            <span class="pg">Cap. XVIII · p. 47</span>
+            <div class="cite-mini">"É mais seguro ser temido do que amado, quando se é forçado a abrir mão de uma dessas alternativas."</div>
+          </div>
+        </div>
+        <div class="ref-card">
+          <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+          <div class="body">
+            <strong>Anotação #28</strong> — suas notas<br>
+            <span class="pg">há 5 dias</span>
+            <div class="cite-mini">"O poder do Príncipe moderno é o poder de não aparecer."</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rp-section">
+      <div class="rp-section-title">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 0-3.16 19.5"></path></svg>
+        Memória
+      </div>
+      <div class="rp-card">
+        <div class="rp-mem-row"><span class="k">Memórias ativas</span><span class="v">12</span></div>
+        <div class="rp-mem-row"><span class="k">Latência</span><span class="v green">1.8s</span></div>
+        <div class="rp-mem-row"><span class="k">Custo da operação</span><span class="v">R$ 1,42</span></div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+</body>
+</html>
